@@ -1,0 +1,24 @@
+diff --git a/src/freedreno/common/freedreno_devices.py b/src/freedreno/common/freedreno_devices.py
+index 7ab1706..7d5959e 100644
+--- a/src/freedreno/common/freedreno_devices.py
++++ b/src/freedreno/common/freedreno_devices.py
+@@ -1115,15 +1115,17 @@ add_gpus([
+     ], A6xxGPUInfo(
+         CHIP.A7XX,
+         [a7xx_base, a7xx_gen1],
+-        num_ccu = 1,
++        # Retroid Pocket Duo (Q-7790): values validated on-device via T30 binary patches.
++        num_ccu = 2,
+         tile_align_w = 64,
+-        tile_align_h = 16,
++        tile_align_h = 32,
+         tile_max_w = 1024,
+         tile_max_h = 1024,
+         num_vsc_pipes = 32,
+         cs_shared_mem_size = 32 * 1024,
+         wave_granularity = 2,
+         fibers_per_sp = 128 * 2 * 16,
++        highest_bank_bit = 16,
+         raw_magic_regs = a730_raw_magic_regs,
+     ))
+ 

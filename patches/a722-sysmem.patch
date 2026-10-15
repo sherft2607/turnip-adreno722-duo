@@ -1,0 +1,17 @@
+diff --git a/src/freedreno/vulkan/tu_cmd_buffer.cc b/src/freedreno/vulkan/tu_cmd_buffer.cc
+index ca6e287..e11cf99 100644
+--- a/src/freedreno/vulkan/tu_cmd_buffer.cc
++++ b/src/freedreno/vulkan/tu_cmd_buffer.cc
+@@ -1421,6 +1421,12 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
+       return true;
+    }
+ 
++   /* Adreno 722 (Retroid Pocket Duo): default to sysmem, like TU_DEBUG=sysmem. */
++   if ((cmd->device->physical_device->dev_id.chip_id & 0xffffffff) == 0x43020100) {
++      cmd->state.rp.force_render_mode_reason = "Adreno 722 sysmem default";
++      return true;
++   }
++
+    /* can't fit attachments into gmem */
+    if (!cmd->state.tiling->possible) {
+       cmd->state.rp.force_render_mode_reason = "Can't fit attachments into gmem";

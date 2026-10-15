@@ -1,0 +1,110 @@
+name: Build Turnip (Adreno 722)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mesa_sha:
+        description: Upstream Mesa commit (gitlab.freedesktop.org/mesa/mesa)
+        default: 70bd17c206a4f4275099f328834f70895b6166df
+      variant:
+        description: sysmem = force sysmem on A722, autotune = let tu_autotune pick GMEM/sysmem
+        type: choice
+        options: [sysmem, autotune]
+        default: sysmem
+
+env:
+  NDK_VERSION: r28c
+  API: 30 # matches minApi in T30/meta.json
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build flex bison
+          pip install --user meson mako pyyaml
+
+      - name: Download Android NDK
+        run: |
+          curl -fsSLo ndk.zip https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip
+          unzip -q ndk.zip -d "$RUNNER_TEMP"
+          echo "NDK=$RUNNER_TEMP/android-ndk-${NDK_VERSION}/toolchains/llvm/prebuilt/linux-x86_64/bin" >> "$GITHUB_ENV"
+
+      - name: Fetch Mesa
+        run: |
+          git init -q mesa
+          git -C mesa fetch -q --depth 1 https://gitlab.freedesktop.org/mesa/mesa.git "${{ inputs.mesa_sha }}"
+          git -C mesa checkout -q FETCH_HEAD
+
+      - name: Apply A722 patches
+        working-directory: mesa
+        run: |
+          patches="../patches/a722.patch"
+          [ "${{ inputs.variant }}" = sysmem ] && patches="$patches ../patches/a722-sysmem.patch"
+          # git apply is all-or-nothing and fails the step if a patch no longer fits.
+          for p in $patches; do git apply "$p"; done
+
+      - name: Configure
+        working-directory: mesa
+        run: |
+          cat > android.cross <<EOF
+          [binaries]
+          ar = '$NDK/llvm-ar'
+          c = '$NDK/aarch64-linux-android$API-clang'
+          # Static libc++: emulators load the driver into apps that may not ship libc++_shared.so.
+          cpp = ['$NDK/aarch64-linux-android$API-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++']
+          c_ld = 'lld'
+          cpp_ld = 'lld'
+          strip = '$NDK/llvm-strip'
+          # Empty pkg-config dir so nothing from the Ubuntu host leaks into the Android build.
+          pkg-config = ['env', 'PKG_CONFIG_LIBDIR=/nonexistent', '/usr/bin/pkg-config']
+
+          [host_machine]
+          system = 'android'
+          cpu_family = 'aarch64'
+          cpu = 'armv8'
+          endian = 'little'
+          EOF
+          meson setup build --cross-file android.cross \
+            -Dbuildtype=release -Db_lto=true -Dstrip=true \
+            -Dplatforms=android -Dplatform-sdk-version=$API -Dandroid-stub=true \
+            -Dandroid-libbacktrace=disabled \
+            -Dgallium-drivers= -Dvulkan-drivers=freedreno -Dfreedreno-kmds=kgsl \
+            -Degl=disabled
+
+      - name: Build
+        run: ninja -C mesa/build
+
+      - name: Package adpkg
+        run: |
+          lib=mesa/build/src/freedreno/vulkan/libvulkan_freedreno.so
+          # kgsl-only Turnip must not depend on libdrm; Android has none at runtime.
+          if "$NDK/llvm-readelf" -d "$lib" | grep -q libdrm; then echo "libdrm linked" >&2; exit 1; fi
+          sha=$(echo "${{ inputs.mesa_sha }}" | cut -c1-8)
+          ver=$(cat mesa/VERSION)
+          name="turnip_upstream_a722_${{ inputs.variant }}"
+          mkdir pkg && cp "$lib" pkg/
+          cat > pkg/meta.json <<EOF
+          {
+            "schemaVersion": 1,
+            "name": "Turnip upstream A722 ${{ inputs.variant }} ($sha)",
+            "description": "Upstream Mesa Turnip with Retroid Pocket Duo (Adreno 722) tuning",
+            "author": "Mesa",
+            "packageVersion": "$sha",
+            "vendor": "Mesa",
+            "driverVersion": "$ver-$sha",
+            "minApi": $API,
+            "libraryName": "libvulkan_freedreno.so"
+          }
+          EOF
+          (cd pkg && zip -q "../$name.adpkg.zip" meta.json libvulkan_freedreno.so)
+          echo "NAME=$name" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.NAME }}.adpkg.zip
