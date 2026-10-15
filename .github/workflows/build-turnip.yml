@@ -25,7 +25,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build flex bison
+          sudo apt-get install -y ninja-build flex bison glslang-tools
           pip install --user meson mako pyyaml
 
       - name: Download Android NDK
