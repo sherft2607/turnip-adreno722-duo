@@ -56,7 +56,7 @@ jobs:
           ar = '$NDK/llvm-ar'
           c = '$NDK/aarch64-linux-android$API-clang'
           # Static libc++: emulators load the driver into apps that may not ship libc++_shared.so.
-          cpp = ['$NDK/aarch64-linux-android$API-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++']
+          cpp = ['$NDK/aarch64-linux-android$API-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++', '-Wno-c++11-narrowing']
           c_ld = 'lld'
           cpp_ld = 'lld'
           strip = '$NDK/llvm-strip'
