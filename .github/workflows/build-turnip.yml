@@ -70,7 +70,7 @@ jobs:
           endian = 'little'
           EOF
           meson setup build --cross-file android.cross \
-            -Dbuildtype=release -Db_lto=true -Dstrip=true \
+            -Dbuildtype=release -Db_lto=false -Dstrip=true \
             -Dplatforms=android -Dplatform-sdk-version=$API -Dandroid-stub=true \
             -Dandroid-libbacktrace=disabled \
             -Dgallium-drivers= -Dvulkan-drivers=freedreno -Dfreedreno-kmds=kgsl \
