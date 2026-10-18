@@ -5,8 +5,18 @@ Turnip (Mesa Vulkan) builds tuned for the **Qualcomm Dragonwing Q-7790 (Adreno 7
 ## Upstream Mesa builds (GitHub Actions)
 `.github/workflows/build-turnip.yml` builds upstream Mesa (default `70bd17c2`, 26.3.0-devel) for Android/KGSL and packages a `.adpkg.zip`.
 
-* `patches/a722.patch` (always applied): makes the A722 (`0x43020100`) entry match its sibling A720 (`0x43020000`): `num_ccu = 2`, `tile_align_h = 32`, `highest_bank_bit = 15`, `raw_magic_regs = a720_raw_magic_regs`. Upstream added A722 in 803731f7 with A730 placeholder magic regs; A720 got trace-derived values later in 4db0b15c. On KGSL, `highest_bank_bit` is read from the kernel, so the device-table value is only a fallback.
+* The A722 (`0x43020100`) entry is always edited (by `sed` in the workflow, so it applies at any Mesa commit) to the values of the clean T30 `--ccu2` build: `num_ccu = 2`, `tile_align_h = 32`, `highest_bank_bit = 16`, keeping `a730_raw_magic_regs`. Mirroring A720 (`a720_raw_magic_regs`, `highest_bank_bit = 15`) made the MK8 menu icons worse, so it was dropped. On KGSL, `highest_bank_bit` is read from the kernel, so the device-table value is only a fallback.
 * `patches/a722-sysmem.patch` (`variant: sysmem` only): forces sysmem rendering on A722, like `TU_DEBUG=sysmem`. With `variant: autotune`, tu_autotune picks GMEM or sysmem per render pass.
+* `tu_debug` (optional): `TU_DEBUG` flags baked in as the default (Android emulators can't set env vars), e.g. `noubwc` or `nolrz`. Package names carry the Mesa SHA and the flags.
+
+## MK8 menu icon corruption (Eden) - findings
+T30 `--ccu2` renders MK8 menu icons cleanly; upstream `70bd17c2` with the same A722 values flickers. Reversing T30 (`vulkan.purple.so`, private base `62ac221a33`, branded "PurpleVK" but still `VK_DRIVER_ID_MESA_TURNIP`, so Eden takes the same Turnip paths):
+
+* A722 `fd_dev_info` header fields match (T30 `--ccu2` vs upstream v1.0.0).
+* Effective magic regs match: T30's table lacks `RB_RBP_CNTL`/`RB_DBG_ECO_CNTL`, but its older code writes both from `magic.*` (= 0 for A722); upstream moved them into the table on 2026-10-02 (21d260a3, 396a186e) with the same values.
+* The runtime overrides of `TPL1_DBG_ECO_CNTL`/`ECO_CNTL1`/`SP_CHICKEN_BITS` read the same prop values (TP UBWC flag hint, linear-mipmap threshold, EOLM all on).
+
+So the regression is in driver code between T30's base (no later than upstream `5842099c`, 2026-08-17) and `70bd17c2`, or in MrPurple's private patches. Bisect with this workflow (`variant: autotune`).
 
 ## Binary-patched T30 builds
 `patch_t30_a722_sysmem.py` patches **MrPurple666's Turnip T30** (26.3.0-devel / Vulkan 1.4.359):
