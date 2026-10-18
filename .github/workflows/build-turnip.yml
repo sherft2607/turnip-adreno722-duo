@@ -113,6 +113,8 @@ jobs:
           TU_DEBUG_DEFAULT: ${{ inputs.tu_debug }}
         run: |
           lib=mesa/build/src/freedreno/vulkan/libvulkan_freedreno.so
+          # meson's -Dstrip only applies to `meson install`; we package straight from the build dir.
+          "$NDK/llvm-strip" --strip-unneeded "$lib"
           # kgsl-only Turnip must not depend on libdrm; Android has none at runtime.
           if "$NDK/llvm-readelf" -d "$lib" | grep -q libdrm; then echo "libdrm linked" >&2; exit 1; fi
           sha=$(echo "${{ inputs.mesa_sha }}" | cut -c1-8)
