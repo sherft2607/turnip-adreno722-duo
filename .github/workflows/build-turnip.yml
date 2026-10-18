@@ -14,6 +14,14 @@ on:
       tu_debug:
         description: Default TU_DEBUG flags baked into the driver (e.g. noubwc,nolrz); empty = none
         default: ''
+      pixel_center_interp:
+        description: Like MrPurple T30, don't force per-sample FS interpolation under sample shading
+        type: boolean
+        default: true
+      stable_fixes:
+        description: Cherry-pick upstream mesa-stable c88b6ebd3 (bindless invalidate) + 5cf8c6b2f (push-const range)
+        type: boolean
+        default: true
 
 env:
   NDK_VERSION: r28c
@@ -60,6 +68,8 @@ jobs:
           done
           # git apply is all-or-nothing and fails the step if a patch no longer fits.
           [ "${{ inputs.variant }}" = sysmem ] && git apply ../patches/a722-sysmem.patch
+          [ "${{ inputs.pixel_center_interp }}" = true ] && git apply ../patches/tu-no-force-sample-interp.patch
+          [ "${{ inputs.stable_fixes }}" = true ] && git apply ../patches/upstream-c88b6ebd3.patch ../patches/upstream-5cf8c6b2f.patch
           if [ -n "$TU_DEBUG_DEFAULT" ]; then
             [[ "$TU_DEBUG_DEFAULT" =~ ^[a-z0-9_,]+$ ]] || { echo "bad tu_debug: $TU_DEBUG_DEFAULT" >&2; exit 1; }
             # Android apps can't set env vars, so TU_DEBUG falls back to these flags when unset.
@@ -89,7 +99,7 @@ jobs:
           endian = 'little'
           EOF
           meson setup build --cross-file android.cross \
-            -Dbuildtype=release -Db_lto=false -Dstrip=false \
+            -Dbuildtype=release -Db_lto=false -Dstrip=true \
             -Dplatforms=android -Dplatform-sdk-version=$API -Dandroid-stub=true \
             -Dandroid-libbacktrace=disabled \
             -Dgallium-drivers= -Dvulkan-drivers=freedreno -Dfreedreno-kmds=kgsl \
@@ -108,12 +118,14 @@ jobs:
           sha=$(echo "${{ inputs.mesa_sha }}" | cut -c1-8)
           ver=$(cat mesa/VERSION)
           dbg=${TU_DEBUG_DEFAULT//,/-}
+          [ "${{ inputs.pixel_center_interp }}" = true ] && dbg="${dbg:+$dbg-}pxcenter"
+          [ "${{ inputs.stable_fixes }}" = true ] && dbg="${dbg:+$dbg-}stable"
           name="turnip_upstream_a722_${{ inputs.variant }}_${sha}${dbg:+_$dbg}"
           mkdir pkg && cp "$lib" pkg/
           cat > pkg/meta.json <<EOF
           {
             "schemaVersion": 1,
-            "name": "Turnip upstream A722 ${{ inputs.variant }} ($sha${dbg:+ TU_DEBUG=$TU_DEBUG_DEFAULT})",
+            "name": "Turnip upstream A722 ${{ inputs.variant }} ($sha${dbg:+ $dbg})",
             "description": "Upstream Mesa Turnip with Retroid Pocket Duo (Adreno 722) tuning",
             "author": "Mesa",
             "packageVersion": "$sha",

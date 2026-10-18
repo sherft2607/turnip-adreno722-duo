@@ -1,0 +1,43 @@
+From c88b6ebd3835dfcf0c5764fc7444e6dd2765c08e Mon Sep 17 00:00:00 2001
+From: Connor Abbott <cwabbott0@gmail.com>
+Date: Mon, 5 Oct 2026 13:57:52 -0400
+Subject: [PATCH] tu: Fix bindless descriptor invalidate sequence
+
+CTS for VK_EXT_descriptor_heap has a more demanding test which actually
+loads some data into the cache and then invalidates it. In order to pass
+we need to either write SP_*_BINDLESS_INVALIDATE or re-emit all the
+descriptors. Just writing SP_UPDATE_CNTL as if we're going to change it
+apparently isn't enough, and the fields don't even exist on a8xx. Keep
+emitting SP_UPDATE_CNTL before a8xx in case it actually does something,
+which is likely at least on a6xx since SP registers can't touch the
+HLSQ's shadow cache.
+
+Cc: mesa-stable
+Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/45129>
+---
+ src/freedreno/vulkan/tu_cmd_buffer.cc | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/src/freedreno/vulkan/tu_cmd_buffer.cc b/src/freedreno/vulkan/tu_cmd_buffer.cc
+index ca6e287e3..856f29f8b 100644
+--- a/src/freedreno/vulkan/tu_cmd_buffer.cc
++++ b/src/freedreno/vulkan/tu_cmd_buffer.cc
+@@ -391,10 +391,14 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
+    if (flushes & TU_CMD_FLAG_CACHE_INVALIDATE)
+       tu_emit_event_write<CHIP>(cmd_buffer, cs, FD_CACHE_INVALIDATE);
+    if (flushes & TU_CMD_FLAG_BINDLESS_DESCRIPTOR_INVALIDATE) {
+-      tu_cs_emit_regs(cs, SP_UPDATE_CNTL(CHIP,
+-            .cs_bindless = CHIP == A6XX ? 0x1f : 0xff,
+-            .gfx_bindless = CHIP == A6XX ? 0x1f : 0xff,
+-      ));
++      if (CHIP < A8XX) {
++         tu_cs_emit_regs(cs, SP_UPDATE_CNTL(CHIP,
++               .cs_bindless = CHIP == A6XX ? 0x1f : 0xff,
++               .gfx_bindless = CHIP == A6XX ? 0x1f : 0xff,
++         ));
++      }
++      tu_cs_emit_regs(cs, A6XX_SP_CS_BINDLESS_INVALIDATE(1));
++      tu_cs_emit_regs(cs, A6XX_SP_GFX_BINDLESS_INVALIDATE(1));
+    }
+ 
+    /* SUBPASS_SLICE_FENCE is a weaker version of:

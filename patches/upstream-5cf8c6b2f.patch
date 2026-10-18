@@ -1,0 +1,24 @@
+From 5cf8c6b2fee69fb14ca848c4efce1e38110abebc Mon Sep 17 00:00:00 2001
+From: Connor Abbott <cwabbott0@gmail.com>
+Date: Fri, 25 Sep 2026 14:57:03 -0400
+Subject: [PATCH] tu: Don't bail after the first instr when gathering push
+ const range
+
+Cc: mesa-stable
+Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/45129>
+---
+ src/freedreno/vulkan/tu_shader.cc | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/freedreno/vulkan/tu_shader.cc b/src/freedreno/vulkan/tu_shader.cc
+index 0787cd831..45e173236 100644
+--- a/src/freedreno/vulkan/tu_shader.cc
++++ b/src/freedreno/vulkan/tu_shader.cc
+@@ -1418,7 +1418,6 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
+             uint32_t range = nir_intrinsic_range(intrin);
+             min = MIN2(min, base);
+             max = MAX2(max, base + range);
+-            break;
+          }
+       }
+    }
