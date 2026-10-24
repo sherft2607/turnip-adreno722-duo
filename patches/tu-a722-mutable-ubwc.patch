@@ -1,0 +1,38 @@
+diff --git a/src/freedreno/vulkan/tu_image.cc b/src/freedreno/vulkan/tu_image.cc
+index 478a63b..7c441f5 100644
+--- a/src/freedreno/vulkan/tu_image.cc
++++ b/src/freedreno/vulkan/tu_image.cc
+@@ -520,6 +520,23 @@ format_list_ubwc_possible(struct tu_device *dev,
+    return true;
+ }
+ 
++/* Duo build: A722 keeps UBWC on mutable-format images, as Vauzi's Turnip-Z
++ * does, although it lacks ubwc_all_formats_compatible: a view in another
++ * format may decode the compressed data wrongly. TU_MUTABLE_UBWC=0 restores
++ * upstream behaviour.
++ */
++DEBUG_GET_ONCE_BOOL_OPTION(mutable_ubwc, "TU_MUTABLE_UBWC", true)
++
++static bool
++a722_keep_mutable_ubwc(struct tu_device *dev,
++                       const VkImageFormatListCreateInfo *fmt_list,
++                       const VkImageCreateInfo *create_info)
++{
++   return (dev->physical_device->dev_id.chip_id & 0xffffffff) == 0x43020100 &&
++          debug_get_option_mutable_ubwc() &&
++          format_list_ubwc_possible(dev, fmt_list, create_info);
++}
++
+ template <chip CHIP>
+ VkResult
+ tu_image_init(struct tu_device *device, struct tu_image *image,
+@@ -628,7 +645,8 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
+             ubwc_enabled = false;
+             force_linear_tile = true;
+          } else if (!mutable_ubwc_fc) {
+-            if (ubwc_enabled) {
++            if (ubwc_enabled &&
++                !a722_keep_mutable_ubwc(device, fmt_list, pCreateInfo)) {
+                if (fmt_list && fmt_list->viewFormatCount == 2) {
+                   perf_debug(
+                      device,

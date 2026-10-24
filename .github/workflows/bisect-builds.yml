@@ -180,11 +180,11 @@ jobs:
           LIB="$(find mesa/build-android-aarch64 -name libvulkan_freedreno.so | head -n 1)"
           test -n "$LIB" || { echo "libvulkan_freedreno.so not found"; exit 1; }
           rm -rf pkg out && mkdir pkg out
-          cp "$LIB" pkg/vulkan.adreno.so
-          "$NDK_BIN/llvm-strip" --strip-unneeded pkg/vulkan.adreno.so
-          file pkg/vulkan.adreno.so
-          file pkg/vulkan.adreno.so | grep -q "ARM aarch64"
-          ls -l pkg/vulkan.adreno.so
+          cp "$LIB" pkg/libvulkan_freedreno.so
+          "$NDK_BIN/llvm-strip" --strip-unneeded pkg/libvulkan_freedreno.so
+          file pkg/libvulkan_freedreno.so
+          file pkg/libvulkan_freedreno.so | grep -q "ARM aarch64"
+          ls -l pkg/libvulkan_freedreno.so
 
           SHORT="${MESA_SHA:0:8}"
           export META_NAME="Turnip A722 - ${BUILD_ID}"
@@ -200,7 +200,7 @@ jobs:
               "vendor": "Mesa",
               "driverVersion": "Mesa 26.3.0-devel",
               "minApi": 28,
-              "libraryName": "vulkan.adreno.so",
+              "libraryName": "libvulkan_freedreno.so",
           }
           with open("pkg/meta.json", "w") as f:
               json.dump(meta, f, indent=2)
@@ -210,12 +210,12 @@ jobs:
           cat pkg/meta.json
 
           ZIP="out/turnip-a722-${BUILD_ID}-${SHORT}.adpkg.zip"
-          (cd pkg && zip -9 -X "../$ZIP" vulkan.adreno.so meta.json)
+          (cd pkg && zip -9 -X "../$ZIP" libvulkan_freedreno.so meta.json)
           unzip -l "$ZIP"
           (cd out && sha256sum "$(basename "$ZIP")" | tee "$(basename "$ZIP").sha256")
 
           # Informational only: which loader entry points does this build export?
-          "$NDK_BIN/llvm-nm" -D --defined-only pkg/vulkan.adreno.so | grep -E "HMI|vk_icd|vkGetInstanceProcAddr" || true
+          "$NDK_BIN/llvm-nm" -D --defined-only pkg/libvulkan_freedreno.so | grep -E "HMI|vk_icd|vkGetInstanceProcAddr" || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
