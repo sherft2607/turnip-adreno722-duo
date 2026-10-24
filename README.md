@@ -1,4 +1,4 @@
-# Turnip Duo v5.1 (4.4-exp stack + A722 calibration)
+# Turnip Duo v5.1 (Official A722 Blob Registers)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
@@ -15,7 +15,15 @@ carry the 60-series patches that came after it.
   **not** baked in - on this device it corrupts UBWC swapchain strides
   (purple/black vertical lines, GPU hangs). Patch 36 forces sysmem through its
   own path instead, which is what the known-good build used.
-* **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
+* **A722 blob registers**: `patches/56-fd722-blob.py`, taken from vauzi's
+  [`14298e1`](https://github.com/Vauzi-17/710/commit/14298e1) on `sw`. Upstream
+  aliases FD722 to `a730_raw_magic_regs`; this defines a standalone
+  `a722_raw_magic_regs` correcting 12 registers against Qualcomm blob traces,
+  and sets `has_lpac = False`. It replaces the whole FD722 `add_gpus` block,
+  and the block it writes carries the same four calibrated values we had
+  already locked.
+* **Duo-specific**: `patches/57-fd722-duo.py` (was `51-`, renumbered so it runs
+  after 56) pins FD722 to `num_ccu = 1`,
   `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
   is what gave 60 FPS docked — and rewrites `cs_shared_mem_size` to 32 KiB. It
   asserts the first two rather than editing them, and fails the build if

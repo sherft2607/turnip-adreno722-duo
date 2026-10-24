@@ -33,12 +33,17 @@ ships. With MESA_REF pinned to a commit it can never fire.
 To try the A720-style 2 CCU / 32 tile config instead, set EXPECT below to
 (2, 32) and flip ENFORCE to False - the script then rewrites the block.
 
+Numbered 57 so it runs after 56-fd722-blob.py, which replaces the whole FD722
+add_gpus block with its own text. 56 happens to set the same four values from
+its blob traces, so this script normally reports "already applied" and exists to
+fail the build if 56 (or anything else) ever moves them.
+
 Run from the Mesa source root.
 """
 import re
 import sys
 
-NAME = "51-fd722-duo.py"
+NAME = "57-fd722-duo.py"
 SUMMARY = ("FD722 num_ccu=1, tile_align_h=16, highest_bank_bit=15 (pinned), "
            "cs_shared_mem_size=32 KiB")
 

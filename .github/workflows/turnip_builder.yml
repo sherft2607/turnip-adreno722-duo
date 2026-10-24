@@ -1,4 +1,4 @@
-name: Turnip Duo v5.1 (4.4-exp stack + A722 calibration)
+name: Turnip Duo v5.1 (Official A722 Blob Registers)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
