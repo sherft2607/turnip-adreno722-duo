@@ -1,89 +1,113 @@
-# Turnip Duo v5.1 (Official A722 Blob Registers)
+# Turnip Vulkan Driver for Retroid Pocket Duo (Adreno 722)
 
-vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
-(Qualcomm Dragonwing Q-7790, Adreno 722)**.
-
-4.4-exp is the fast, stable one: it stops at `50-fd720-blob.py` and does not
-carry the 60-series patches that came after it.
-
-* **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
-* **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
-* **v5.1**: the full 4.4-exp patch set, exactly as vauzi shipped it, with one
-  Duo-specific addition. The 4.4.1-5.0 experiments are all reverted: patch 02
-  is on, patch 09 is on, the Turnip-Z set (30-37) is on, and
-  `default_env.conf` has no active entries. `TU_DEBUG=sysmem` is deliberately
-  **not** baked in - on this device it corrupts UBWC swapchain strides
-  (purple/black vertical lines, GPU hangs). Patch 36 forces sysmem through its
-  own path instead, which is what the known-good build used.
-* **A722 blob registers**: `patches/56-fd722-blob.py`, taken from vauzi's
-  [`14298e1`](https://github.com/Vauzi-17/710/commit/14298e1) on `sw`. Upstream
-  aliases FD722 to `a730_raw_magic_regs`; this defines a standalone
-  `a722_raw_magic_regs` correcting 12 registers against Qualcomm blob traces,
-  and sets `has_lpac = False`. It replaces the whole FD722 `add_gpus` block,
-  and the block it writes carries the same four calibrated values we had
-  already locked.
-* **Duo-specific**: `patches/57-fd722-duo.py` (was `51-`, renumbered so it runs
-  after 56) pins FD722 to `num_ccu = 1`,
-  `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
-  is what gave 60 FPS docked — and rewrites `cs_shared_mem_size` to 32 KiB. It
-  asserts the first two rather than editing them, and fails the build if
-  upstream ever moves them.
-* Nothing in vauzi's set targets FD722: `40`–`46` are anchored to FD710, `50`
-  to FD720, `14` to FD740 / X1-85. The Duo otherwise runs upstream config.
-
-## Building
-
-Actions → **Turnip Duo v4.4-exp (Duo Edition)** → Run workflow. The defaults
-are the pinned Mesa commit and version `4.4-exp`; output is
-`Turnip-Duo-v4.4-exp.zip` (AdrenoTools).
-
-Recommended at runtime: `TU_DEBUG=sysmem`.
-
-The older hand-rolled workflows (`build-turnip.yml`, `release-duo-v1.yml`,
-`bisect-builds.yml`) and their patches in `legacy-patches/` are untouched and
-still work; vauzi's builder only reads `patches/`.
+Custom, hardware-verified Mesa Freedreno (Turnip) Vulkan driver engineered specifically for the **Retroid Pocket Duo** (Qualcomm Adreno 722 GPU).
 
 ---
 
-# Turnip for Retroid Pocket Duo (Adreno 722 / Q-7790)
+## 🎯 Target Hardware & Identity
 
-Custom Mesa Turnip Vulkan graphic drivers optimized for the **Qualcomm Dragonwing Q-7790 (Adreno 722)** in the Retroid Pocket Duo.
-
----
-
-## 🌟 Recommended Driver (Start Here!)
-
-For 99% of users, download the **T30 CCU2 Autotune** driver from the [Releases Page](https://github.com/sherft2607/turnip-adreno722-duo/releases):
-
-* **`turnip_mrpurple_T30_a722_ccu2_autotune.adpkg.zip`** (Recommended)
-  * **Status:** Rock-solid stability. Zero visual glitches or crashes.
-  * **Performance:** 
-    * **Wind Waker HD (Cemu):** Stable 29–30 FPS @ 720p.
-    * **Mario Kart 8 Deluxe (Eden):** ~50 FPS average (+5 FPS over stock driver).
-    * **Azahar (3DS):** Smooth dual-screen rendering with fast on-chip memory enabled.
-  * **What it does:** Unlocks both GPU cores (`num_ccu = 2`, `tile_align_h = 32`) on MrPurple's battle-tested T30 Turnip base and enables fast on-chip GPU memory (`autotune`).
-
-* **`turnip_mrpurple_T30_a722_ccu2_sysmem.adpkg.zip`** (Safe Fallback)
-  * Same 2-core fix as above, but routes rendering through system memory (`sysmem`) if any heavy game overloads GMEM.
+* **Device:** Retroid Pocket Duo
+* **Chipset:** Qualcomm Dragonwing Q7790 (`CQ7790S`)
+* **Platform / SoC ID:** `sun` / SoC ID `732` (Codename `kera`)
+* **GPU Model:** `Qualcomm Adreno (TM) 722`
+* **GPU Chip ID:** `0x43020100` (`1124204800`)
+* **Kernel Driver:** `msm_kgsl` (`adreno_gpu_core_gen7_17_0`, `gpurev 0x00071100`)
+* **Operating System:** Android 16 (API Level 36)
 
 ---
 
-## 🧪 Experimental Upstream Builds (High FPS, Known UI Glitches)
+## 🔬 Hardware Ground Truth
 
-Automated builds compiled directly from upstream Mesa (`src/freedreno` / Turnip) using `.github/workflows/build-turnip.yml`.
+Parameters dumped from physical Retroid Pocket Duo hardware over ADB: the kernel
+device tree, `msm_kgsl.ko`, the vendor blobs and `stock_vkjson.json`. The last
+column says where each value comes from, because not all of them are readable
+off the hardware.
 
-> [!WARNING]
-> Upstream Mesa delivers **~10% higher in-game FPS** (e.g. 55 FPS average in MK8 Deluxe), but currently suffers from **flickering / disappearing 2D menu and UI icons** in emulators like Eden. Use the T30 driver above for normal gameplay.
+| Hardware Parameter | Value | Source |
+|---|---|---|
+| **On-Chip GMEM** | `1 MiB` (`0x100000`) | Kernel core struct; Turnip reads it from KGSL at runtime |
+| **Highest Bank Bit** | `15` (`0xf`) | Device tree, cross-checked against the kernel's `RB_NC_MODE_CNTL = 0x814` (bits 2:1 = hbb − 13). Also upstream Mesa's default, so this is locked rather than changed |
+| **Compute Shared Memory** | `32 KiB` (`32768`) | OEM blob reports `maxComputeSharedMemorySize = 32768`. Locked back down after patch 18 raises every device to 64 KiB |
+| **Wave / Subgroup Size** | `64` | OEM blob reports `subgroupSize = 64` with no smaller size |
+| **CCU Count** | `num_ccu = 1`, `tile_align_h = 16` | **[INFERENCE]** Not exposed by the kernel. Upstream Mesa's own FD722 values, independently matched by vauzi's blob-trace analysis in patch 56 |
+| **Async Compute (LPAC)** | Disabled | Blob-trace analysis (patch 56): `GPUProps(has_lpac = False)`, overriding `a7xx_base` |
+| **UBWC** | Mode 4.0, 32-byte min access length | Device tree (`qcom,ubwc-mode = 4`, `qcom,min-access-length = 0x20`) |
+| **Magic Registers** | Standalone `a722_raw_magic_regs` | 37-entry table from 116 Qualcomm blob cmdstream traces, correcting 12 values that upstream inherited from A730 |
 
-* **Upstream Autotune:** Builds Mesa from source with the A722 2-core patch applied (`num_ccu = 2`, `tile_align_h = 32`, `highest_bank_bit = 16`).
-* **`tu_debug` options:** Diagnostic builds (`noubwc`, `nolrz`) are available under releases to help isolate upstream driver bugs.
+### Note on subgroup size
+
+The blob reports a single subgroup size of 64. This build has
+`09-tu-ir3-subgroup-half-warp.patch` **active**, which advertises
+`minSubgroupSize = 32` and lowers `WaveSize(32)` compute shaders onto half
+waves. It is in the build because it was part of the configuration measured at
+60 FPS with no crashes. To match the blob exactly, rename it to
+`09-tu-ir3-subgroup-half-warp.patch.off` and `minSubgroupSize` returns to 64.
 
 ---
 
-## How to Install in Emulators
+## ⚡ Performance & Compatibility
 
-1. Download the `.adpkg.zip` file (do not unzip it).
-2. Open your emulator (**Eden**, **Cemu**, or **Azahar**).
-3. Go to **Settings** → **GPU / Graphics Driver Manager**.
-4. Tap **Install / Add** and select the `.adpkg.zip` file.
-5. Select the driver from the list.
+### 1. Eden (Nintendo Switch)
+* **Mario Kart 8 Deluxe:** locked **55–60 FPS at 1080p docked**, solid 60 FPS at 720p handheld.
+* **Display pipeline:** Android 16 **IMapper5 stable-C SP-HAL** gralloc backend (patch 15), which removes the 30 FPS swapchain cap.
+* **Clocks:** patch 17 disables the KGSL governor through `KGSL_PROP_PWRCTRL` while any queue is alive and restores it on close, so the GPU holds its top frequency during emulation instead of being clocked down.
+* **Known issue:** the 2D item icon in the HUD box does not render. 3D items are unaffected. It is caused by something in the Turnip-Z set (patches 30–37) — on pure upstream Mesa the icon is correct — and is not yet narrowed to a single patch.
+
+### 2. Cemu (Nintendo Wii U)
+* **The Legend of Zelda: The Wind Waker HD:** clean rendering at a locked **30 FPS**.
+
+### 3. Winlator (PC compatibility)
+* The builder has a glibc target, but this fork ships no `patches/glibc/`, so the
+  Winlator X11 WSI patches are not applied. Untested here; use vauzi's upstream
+  builds for Winlator.
+
+---
+
+## 🏗️ Architecture & Patch Stack
+
+Built on upstream **Mesa 27.0.0-devel**, pinned to commit
+[`74920caaa0be`](https://gitlab.freedesktop.org/mesa/mesa/-/commit/74920caaa0bed55313e7af00036c61515621913b),
+with **Android NDK r29** targeting **Platform SDK 36**.
+
+`patches/` is vauzi's 4.4-exp set, taken from
+[`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch —
+the newest commit whose patch list matches the 4.4-exp release notes exactly.
+4.4-exp stops at `50-fd720-blob.py` and carries none of the later 60-series
+patches.
+
+* **Patches 01 & 15:** `u_gralloc` UBWC detection and the Android 16 IMapper5 SP-HAL loader.
+* **Patch 02:** LRZ state reuse for `LOAD_OP_DONT_CARE` depth attachments. Gated on `TU_DEBUG(SYSMEM)`; nothing in this build sets that flag, so it is currently dormant.
+* **Patch 16:** UBWC-compressed swapchain framebuffers.
+* **Patch 17:** KGSL governor lock (`KGSL_PROP_PWRCTRL`) plus an autotune bandwidth tweak.
+* **Patches 30–37:** Turnip-Z engine — mutable-format UBWC, cheaper sampling, forced sysmem rendering. (`34` and `35` ship disabled, as upstream.)
+* **Patches 40–46, 50:** FD710 and FD720 tuning. Anchored to those GPUs by name; they do not touch FD722.
+* **Patch 56 (`56-fd722-blob.py`):** standalone Adreno 722 magic registers and `has_lpac = False`, from vauzi's blob analysis. Replaces the whole FD722 device entry.
+* **Patch 57 (`57-fd722-duo.py`):** Duo hardware enforcement — `highest_bank_bit = 15`, `cs_shared_mem_size = 32 KiB`, and asserts `num_ccu = 1` / `tile_align_h = 16`. Numbered 57 so it runs after 56 and has the final word; it fails the build rather than shipping drifted values.
+
+Anything renamed `.off` in `patches/` is disabled but kept, and re-enabled by
+dropping the suffix.
+
+---
+
+## 🚀 How to Build & Install
+
+1. Go to the **Actions** tab of this repository.
+2. Select **Turnip Duo v5.1 (Official A722 Blob Registers)**.
+3. Click **Run workflow** on branch `main`. The defaults are the pinned Mesa commit and version `5.1`.
+4. When it finishes, download **`Turnip-Duo-v5.1.zip`** from the run's artifacts.
+5. In your emulator (Eden, Cemu, …), open the GPU driver manager and install the `.adpkg.zip`.
+
+---
+
+## ⚙️ Recommended Device Settings
+
+* **Retroid Pocket Duo OS:** Performance Mode set to **Performance / Extreme**, Fan Mode to **Sport / Smart**, to avoid thermal throttling.
+* **Eden:** Graphics Accuracy **Normal**, VSync **Mailbox / FIFO Relaxed**, **Asynchronous ASTC Texture Decoding** enabled.
+
+---
+
+## Credits
+
+Patch set by [vauzi](https://github.com/Vauzi-17/710). Turnip and Mesa are the
+work of the Mesa community. Duo-specific calibration and hardware verification
+by sherft2607, on physical Retroid Pocket Duo hardware.
