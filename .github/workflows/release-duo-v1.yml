@@ -28,7 +28,7 @@ jobs:
         include:
           - id: standard
             label: Standard
-            patches: "a722_duo_v1_standard.patch"
+            patches: "a722_duo_v1_standard.patch 01-u_gralloc-always-use-ubwc-detection.patch"
             meson_extra: ""
             desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15."
           - id: lto
