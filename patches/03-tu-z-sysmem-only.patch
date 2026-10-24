@@ -1,0 +1,37 @@
+diff --git a/src/freedreno/vulkan/tu_cmd_buffer.cc b/src/freedreno/vulkan/tu_cmd_buffer.cc
+index b347a33b..f698d750 100644
+--- a/src/freedreno/vulkan/tu_cmd_buffer.cc
++++ b/src/freedreno/vulkan/tu_cmd_buffer.cc
+@@ -17,6 +17,7 @@
+ #include "common/freedreno_gpu_event.h"
+ #include "common/freedreno_lrz.h"
+ #include "common/freedreno_vrs.h"
++#include "util/u_debug.h"
+ #include "tu_autotune.h"
+ #include "tu_buffer.h"
+ #include "tu_clear_blit.h"
+@@ -1415,6 +1416,8 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
+    return vsc->binning_possible && vsc->binning_useful;
+ }
+ 
++DEBUG_GET_ONCE_BOOL_OPTION(z_sysmem_only, "TU_Z_SYSMEM_ONLY", true)
++
+ static bool
+ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
+                      tu_autotune::rp_ctx_t *rp_ctx,
+@@ -1488,6 +1491,15 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
+       return true;
+    }
+ 
++   /* Duo build (from Vauzi's Turnip-Z): render everything that is not
++    * already forced to GMEM directly to sysmem. TU_Z_SYSMEM_ONLY=0 restores
++    * the autotuner.
++    */
++   if (debug_get_option_z_sysmem_only()) {
++      cmd->state.rp.force_render_mode_reason = "Turnip-Z: sysmem only";
++      return true;
++   }
++
+    tu_autotune::render_mode optimal_mode =
+       cmd->device->autotune->get_optimal_mode(cmd, rp_ctx, rp_key);
+ 

@@ -1,0 +1,54 @@
+diff --git a/src/freedreno/vulkan/tu_sampler.cc b/src/freedreno/vulkan/tu_sampler.cc
+index 2743773d..c3f162d3 100644
+--- a/src/freedreno/vulkan/tu_sampler.cc
++++ b/src/freedreno/vulkan/tu_sampler.cc
+@@ -9,9 +9,14 @@
+ 
+ #include "tu_sampler.h"
+ 
++#include "util/u_debug.h"
++
+ #include "tu_device.h"
+ #include "tu_util.h"
+ 
++DEBUG_GET_ONCE_BOOL_OPTION(z_texfast, "TU_Z_TEXFAST", true)
++DEBUG_GET_ONCE_NUM_OPTION(z_lodbias, "TU_Z_LODBIAS", 45)
++
+ template <chip CHIP>
+ VKAPI_ATTR VkResult VKAPI_CALL
+ tu_CreateSampler(VkDevice _device,
+@@ -110,6 +115,16 @@ tu_CreateSampler(VkDevice _device,
+    float min_lod = CLAMP(pCreateInfo->minLod, 0.0f, 4095.0f / 256.0f);
+    float max_lod = CLAMP(pCreateInfo->maxLod, 0.0f, 4095.0f / 256.0f);
+ 
++   /* Duo build (from Vauzi's Turnip-Z): a small positive mip LOD bias on
++    * plain color samplers cuts texture bandwidth. TU_Z_TEXFAST=0 disables it,
++    * TU_Z_LODBIAS sets the bias in hundredths (default 45), 0 also disables.
++    */
++   float lod_bias = pCreateInfo->mipLodBias;
++   if (debug_get_option_z_texfast() && !ycbcr_conversion &&
++       !pCreateInfo->compareEnable && !pCreateInfo->unnormalizedCoordinates)
++      lod_bias = CLAMP(lod_bias + debug_get_option_z_lodbias() / 100.0f,
++                       -16.0f, 4095.0f / 256.0f);
++
+    sampler->vk.ycbcr_conversion = ycbcr_conversion ?
+       vk_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
+ 
+@@ -121,7 +136,7 @@ tu_CreateSampler(VkDevice _device,
+          A8XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU)) |
+          A8XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV)) |
+          A8XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW)) |
+-         A8XX_TEX_SAMP_0_LOD_BIAS(pCreateInfo->mipLodBias) |
++         A8XX_TEX_SAMP_0_LOD_BIAS(lod_bias) |
+          A8XX_TEX_SAMP_0_ANISO(static_cast<enum a6xx_tex_aniso>(aniso));
+ 
+       sampler->descriptor[1] =
+@@ -155,7 +170,7 @@ tu_CreateSampler(VkDevice _device,
+          A6XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU)) |
+          A6XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV)) |
+          A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW)) |
+-         A6XX_TEX_SAMP_0_LOD_BIAS(pCreateInfo->mipLodBias);
++         A6XX_TEX_SAMP_0_LOD_BIAS(lod_bias);
+       sampler->descriptor[1] =
+          COND(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT,
+             A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) |

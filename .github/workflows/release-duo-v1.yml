@@ -1,7 +1,7 @@
-name: Turnip Duo v1.0 (Performance Edition)
+name: Turnip Duo v2.0 (Turnip-Z Unified)
 
 # Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patches at -O3 (no LTO) and
-# packages turnip-duo-v1.0-standard.adpkg.zip (Adrenotools).
+# packages turnip-duo-v2.0-unified.adpkg.zip (Adrenotools).
 on:
   workflow_dispatch:
 
@@ -24,10 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: standard
-            label: Standard
-            patches: "a722_duo_v2_upstream_hbb15.patch tu-kgsl-governor-off-env.patch tu-a722-mutable-ubwc.patch 01-u_gralloc-always-use-ubwc-detection.patch 02-tu-default-prefer-sysmem.patch"
-            desc: "Adreno 722: upstream device table with bank_bit=15, KGSL governor off (GPU at top clock)."
+          - id: unified
+            label: Unified
+            patches: "a722_duo_v2_upstream_hbb15.patch tu-kgsl-governor-off-env.patch tu-a722-mutable-ubwc.patch 01-u_gralloc-always-use-ubwc-detection.patch 02-tu-default-prefer-sysmem.patch 03-tu-z-sysmem-only.patch 04-tu-z-sampler-lodbias.patch"
+            desc: "Adreno 722: upstream table + bank_bit=15, KGSL governor off, forced sysmem, +0.45 sampler LOD bias, mutable UBWC, UBWC gralloc."
 
     env:
       VARIANT: ${{ matrix.id }}
@@ -173,10 +173,10 @@ jobs:
           short = ".".join(ver.split(".")[:2])             # e.g. 27.0
           meta = {
               "schemaVersion": 1,
-              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v1.0 (%s)" % (short, os.environ["LABEL"]),
+              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v2.0 (%s)" % (short, os.environ["LABEL"]),
               "description": os.environ["DESC"],
               "author": "sherft2607",
-              "packageVersion": "1.0",
+              "packageVersion": "2.0",
               "vendor": "Mesa",
               "driverVersion": "Mesa " + ver,
               "minApi": 28,
@@ -189,7 +189,7 @@ jobs:
           python3 -c "import json; json.load(open('pkg/meta.json'))"
           cat pkg/meta.json
 
-          ZIPNAME="turnip-duo-v1.0-${VARIANT}.adpkg.zip"
+          ZIPNAME="turnip-duo-v2.0-${VARIANT}.adpkg.zip"
           (cd pkg && zip -9 -X "../out/$ZIPNAME" libvulkan_freedreno.so meta.json)
           unzip -l "out/$ZIPNAME"
           (cd out && sha256sum "$ZIPNAME" | tee "$ZIPNAME.sha256")
@@ -200,7 +200,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: turnip-duo-v1.0-${{ matrix.id }}
+          name: turnip-duo-v2.0-${{ matrix.id }}
           path: out/*
           if-no-files-found: error
           retention-days: 30
