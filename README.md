@@ -1,4 +1,4 @@
-# Turnip Duo v4.4.1 (Fix Item Icon Culling)
+# Turnip Duo v4.4.2 (Duo Edition)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
@@ -8,11 +8,15 @@ carry the 60-series patches that came after it.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
-* **v4.4.1**: `02-tu-lrz-reuse-dont-care-in-sysmem.patch` is renamed `.off`.
-  It reused LRZ state across `LOAD_OP_DONT_CARE` depth passes under
-  `TU_DEBUG=sysmem`, which early-culled the Mario Kart 8 item icon. The patch
-  also has a runtime switch, `TU_LRZ_REUSE_DONT_CARE=0`, if you want to A/B it
-  on an existing build without rebuilding.
+* **v4.4.2**: patch 02 is back on. Disabling it in 4.4.1 cost frame rate and
+  did not fix the HUD item icon, so the icon is not an LRZ problem.
+* **Runtime switches**: every Turnip-Z patch here is env-gated, so the
+  remaining HUD bug can be bisected on a build you already have, with no
+  rebuild: `TU_Z_MUTABLE` (0/1/2), `TU_Z_BGRA_SWAP`, `TU_Z_LRZ_RESCUE`,
+  `TU_Z_SYSMEM_ONLY`, `TU_Z_TEXFAST`, `TU_LRZ_REUSE_DONT_CARE`. On Android
+  they also resolve as properties, e.g.
+  `adb shell setprop debug.mesa.tu.z.mutable 0`. Once a setting wins, bake it
+  into `patches/default_env.conf`, which `20-default-env.py` compiles in.
 * **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
   `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
   is what gave 60 FPS docked. It asserts rather than edits, and fails the build
