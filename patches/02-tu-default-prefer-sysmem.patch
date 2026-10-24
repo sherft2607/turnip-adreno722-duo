@@ -1,0 +1,17 @@
+diff --git a/src/freedreno/vulkan/tu_autotune.cc b/src/freedreno/vulkan/tu_autotune.cc
+index c7551c1..b3295ba 100644
+--- a/src/freedreno/vulkan/tu_autotune.cc
++++ b/src/freedreno/vulkan/tu_autotune.cc
+@@ -273,9 +273,10 @@ tu_autotune::get_env_config()
+    static std::once_flag once;
+    static config_t at_config;
+    std::call_once(once, [&] {
+-      algorithm algo = algorithm::DEFAULT;
++      /* Duo build: prefer SYSMEM unless TU_AUTOTUNE_ALGO or a drirc rule picks another algorithm. */
++      algorithm algo = algorithm::PREFER_SYSMEM;
+       const char *algo_str = os_get_option("TU_AUTOTUNE_ALGO");
+-      std::string_view algo_strv;
++      std::string_view algo_strv = "prefer_sysmem";
+ 
+       if (algo_str)
+          algo_strv = algo_str;
