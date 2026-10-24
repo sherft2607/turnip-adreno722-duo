@@ -51,7 +51,7 @@ waves. It is in the build because it was part of the configuration measured at
 * **Mario Kart 8 Deluxe:** locked **55–60 FPS at 1080p docked**, solid 60 FPS at 720p handheld.
 * **Display pipeline:** Android 16 **IMapper5 stable-C SP-HAL** gralloc backend (patch 15), which removes the 30 FPS swapchain cap.
 * **Clocks:** patch 17 disables the KGSL governor through `KGSL_PROP_PWRCTRL` while any queue is alive and restores it on close, so the GPU holds its top frequency during emulation instead of being clocked down.
-* **Known issue:** the 2D item icon in the HUD box does not render. 3D items are unaffected. It is caused by something in the Turnip-Z set (patches 30–37) — on pure upstream Mesa the icon is correct — and is not yet narrowed to a single patch.
+* **2D HUD icons:** fixed by patch 58. Upstream Turnip sets `force_sample_interp` whenever a pipeline enables sample shading, so every non-centroid fragment input is evaluated at its sample position. Eden's MSAA blit shader (`texelFetch(tex, ivec2(texcoord), gl_SampleID)` with `minSampleShading 1.0`) then fetches a different source texel per sample when the blit is scaled, and the 2D icons vanish. MrPurple's T30 never sets the flag; patch 58 does the same.
 
 ### 2. Cemu (Nintendo Wii U)
 * **The Legend of Zelda: The Wind Waker HD:** clean rendering at a locked **30 FPS**.
@@ -82,6 +82,7 @@ patches.
 * **Patches 30–37:** Turnip-Z engine — mutable-format UBWC, cheaper sampling, forced sysmem rendering. (`34` and `35` ship disabled, as upstream.)
 * **Patches 40–46, 50:** FD710 and FD720 tuning. Anchored to those GPUs by name; they do not touch FD722.
 * **Patch 56 (`56-fd722-blob.py`):** standalone Adreno 722 magic registers and `has_lpac = False`, from vauzi's blob analysis. Replaces the whole FD722 device entry.
+* **Patch 58 (`58-tu-no-force-sample-interp.patch`):** never set `force_sample_interp`, matching MrPurple T30. Fixes the missing 2D HUD icons in Eden.
 * **Patch 57 (`57-fd722-duo.py`):** Duo hardware enforcement — `highest_bank_bit = 15`, `cs_shared_mem_size = 32 KiB`, and asserts `num_ccu = 1` / `tile_align_h = 16`. Numbered 57 so it runs after 56 and has the final word; it fails the build rather than shipping drifted values.
 
 Anything renamed `.off` in `patches/` is disabled but kept, and re-enabled by
@@ -92,9 +93,9 @@ dropping the suffix.
 ## 🚀 How to Build & Install
 
 1. Go to the **Actions** tab of this repository.
-2. Select **Turnip Duo v5.1 (Official A722 Blob Registers)**.
-3. Click **Run workflow** on branch `main`. The defaults are the pinned Mesa commit and version `5.1`.
-4. When it finishes, download **`Turnip-Duo-v5.1.zip`** from the run's artifacts.
+2. Select **Turnip Duo v5.2 (Fix MK8 Icons via tu-no-force-sample-interp)**.
+3. Click **Run workflow** on branch `main`. The defaults are the pinned Mesa commit and version `5.2`.
+4. When it finishes, download **`Turnip-Duo-v5.2.zip`** from the run's artifacts.
 5. In your emulator (Eden, Cemu, …), open the GPU driver manager and install the `.adpkg.zip`.
 
 ---
