@@ -1,5 +1,5 @@
 diff --git a/src/freedreno/vulkan/tu_clear_blit.cc b/src/freedreno/vulkan/tu_clear_blit.cc
-index 714b103b..00ea144d 100644
+index 714b103b..7c135fa7 100644
 --- a/src/freedreno/vulkan/tu_clear_blit.cc
 +++ b/src/freedreno/vulkan/tu_clear_blit.cc
 @@ -2407,8 +2407,8 @@ handle_buffer_unaligned_store(struct tu_cmd_buffer *cmd,
@@ -36,6 +36,15 @@ index 714b103b..00ea144d 100644
  
     trace_end_gmem_clear(&cmd->rp_trace, cs);
  }
+@@ -5251,7 +5250,7 @@ tu_clear_attachments_generic(struct tu_cmd_buffer *cmd,
+ 
+    tu_emit_resolve_group<A7XX>(cmd, cs, &resolve_group);
+ 
+-   TU_CALLX(cmd->device, tu_flush_for_access)(&cmd->state.renderpass_cache, TU_ACCESS_BLIT_WRITE_GMEM, TU_ACCESS_NONE);
++   tu_flush_for_access(&cmd->state.renderpass_cache, TU_ACCESS_BLIT_WRITE_GMEM, TU_ACCESS_NONE);
+ }
+ 
+ template <chip CHIP>
 @@ -5475,8 +5474,8 @@ tu7_generic_clear_attachment(struct tu_cmd_buffer *cmd,
        }
     }
@@ -59,7 +68,7 @@ index 714b103b..00ea144d 100644
  
  static bool
 diff --git a/src/freedreno/vulkan/tu_cmd_buffer.cc b/src/freedreno/vulkan/tu_cmd_buffer.cc
-index ca6e287e..fdbf188d 100644
+index ca6e287e..1b606d22 100644
 --- a/src/freedreno/vulkan/tu_cmd_buffer.cc
 +++ b/src/freedreno/vulkan/tu_cmd_buffer.cc
 @@ -396,28 +396,7 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
@@ -420,6 +429,15 @@ index ca6e287e..fdbf188d 100644
  }
  TU_GENX(tu_CmdWriteBufferMarker2AMD);
  
+@@ -10710,6 +10594,6 @@ tu_flush_buffer_write_cp(VkCommandBuffer commandBuffer)
+    VK_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+ 
+    struct tu_cache_state *cache = &cmd->state.cache;
+-   TU_CALLX(cmd->device, tu_flush_for_access)(cache, TU_ACCESS_CP_WRITE,
+-                                              static_cast<enum tu_cmd_access_mask>(0));
++   tu_flush_for_access(cache, TU_ACCESS_CP_WRITE,
++                       static_cast<enum tu_cmd_access_mask>(0));
+ }
 diff --git a/src/freedreno/vulkan/tu_cmd_buffer.h b/src/freedreno/vulkan/tu_cmd_buffer.h
 index 14c38d7f..15c29372 100644
 --- a/src/freedreno/vulkan/tu_cmd_buffer.h
