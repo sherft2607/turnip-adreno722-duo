@@ -1,7 +1,7 @@
-name: Turnip Duo v2.3 (A730 + Turnip-Z)
+name: Turnip Duo v3.0 (Vauzi 60FPS Base + Bank Bit 15)
 
-# Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patches at -O3 (no LTO) and
-# packages turnip-duo-v2.3-turnipz.adpkg.zip (Adrenotools).
+# Manual only. Builds Mesa 74920caaa0 (the commit Vauzi-17 was built from) with NDK r29, API 36,
+# release buildtype, no LTO, plus the u_gralloc UBWC patch and highest_bank_bit=15 for the A722.
 on:
   workflow_dispatch:
 
@@ -10,10 +10,10 @@ permissions:
 
 env:
   MESA_URL: https://gitlab.freedesktop.org/mesa/mesa.git
-  MESA_SHA: ed2b00fa28dfc60061e21ecbe2280a49940fb470
-  # r28c first, r27c as fallback (sdkmanager package versions).
-  NDK_CANDIDATES: "28.2.13676358 27.2.12479018"
-  PLATFORM_SDK: "35"
+  MESA_SHA: 74920caaa0bed55313e7af00036c61515621913b
+  # r29 first (Vauzi-17 build id 14206865), r28c as fallback (sdkmanager package versions).
+  NDK_CANDIDATES: "29.0.14206865 29.0.14033849 28.2.13676358"
+  PLATFORM_SDK: "36"
 
 jobs:
   release:
@@ -24,10 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: turnipz
-            label: TurnipZ
-            patches: "a722_duo_v2_upstream_hbb15.patch 01-u_gralloc-always-use-ubwc-detection.patch tu-kgsl-governor-off-env.patch tu-a722-mutable-ubwc.patch 03-tu-z-sysmem-only.patch 04-tu-z-sampler-lodbias.patch"
-            desc: "Adreno 722: upstream table (1 CCU, tile_align_h 16, A730 regs) + bank_bit=15, KGSL governor off, UBWC gralloc, forced sysmem, +0.45 LOD bias, mutable UBWC, API 35, beta extensions."
+          - id: vauzi
+            label: Vauzi Base
+            patches: "01-u_gralloc-always-use-ubwc-detection.patch a722_duo_hbb15.patch"
+            desc: "Vauzi-17 base (Mesa 74920caaa0, NDK r29, API 36): A730 cache regs, highest_bank_bit=15, UBWC gralloc. No forced sysmem, no LOD bias."
 
     env:
       VARIANT: ${{ matrix.id }}
@@ -135,14 +135,14 @@ jobs:
           EOF
           cat "$RUNNER_TEMP/android-aarch64"
 
-      - name: Configure and build Turnip (KGSL, -O3)
+      - name: Configure and build Turnip (KGSL, release, no LTO)
         shell: bash
         working-directory: mesa
         run: |
           meson setup build-android-aarch64 \
             --cross-file "$RUNNER_TEMP/android-aarch64" \
             -Dbuildtype=release \
-            -Doptimization=3 \
+            -Db_lto=false \
             -Dplatforms=android \
             -Dplatform-sdk-version="$PLATFORM_SDK" \
             -Dandroid-stub=true \
@@ -174,10 +174,10 @@ jobs:
           short = ".".join(ver.split(".")[:2])             # e.g. 27.0
           meta = {
               "schemaVersion": 1,
-              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v2.3 (%s)" % (short, os.environ["LABEL"]),
+              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v3.0 (%s)" % (short, os.environ["LABEL"]),
               "description": os.environ["DESC"],
               "author": "sherft2607",
-              "packageVersion": "2.3",
+              "packageVersion": "3.0",
               "vendor": "Mesa",
               "driverVersion": "Mesa " + ver,
               "minApi": 28,
@@ -190,7 +190,7 @@ jobs:
           python3 -c "import json; json.load(open('pkg/meta.json'))"
           cat pkg/meta.json
 
-          ZIPNAME="turnip-duo-v2.3-${VARIANT}.adpkg.zip"
+          ZIPNAME="turnip-duo-v3.0-${VARIANT}.adpkg.zip"
           (cd pkg && zip -9 -X "../out/$ZIPNAME" libvulkan_freedreno.so meta.json)
           unzip -l "out/$ZIPNAME"
           (cd out && sha256sum "$ZIPNAME" | tee "$ZIPNAME.sha256")
@@ -201,7 +201,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: turnip-duo-v2.3-${{ matrix.id }}
+          name: turnip-duo-v3.0-${{ matrix.id }}
           path: out/*
           if-no-files-found: error
           retention-days: 30
