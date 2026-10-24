@@ -1,0 +1,55 @@
+diff --git a/src/freedreno/vulkan/tu_knl_kgsl.cc b/src/freedreno/vulkan/tu_knl_kgsl.cc
+index 3856e92..c7702f2 100644
+--- a/src/freedreno/vulkan/tu_knl_kgsl.cc
++++ b/src/freedreno/vulkan/tu_knl_kgsl.cc
+@@ -47,6 +47,28 @@ safe_ioctl(int fd, unsigned long request, void *arg)
+    return ret;
+ }
+ 
++/* Duo build: the KGSL GPU governor is off while this process has a queue
++ * open, which pins the GPU at its top clock. Android apps cannot pass env
++ * vars, so this is the default; TU_KGSL_GOVERNOR_OFF=0 opts out.
++ */
++DEBUG_GET_ONCE_BOOL_OPTION(kgsl_governor_off, "TU_KGSL_GOVERNOR_OFF", true)
++
++static int kgsl_governor_off_queues;
++
++static void
++kgsl_set_governor(int fd, unsigned int enable)
++{
++   struct kgsl_device_getproperty prop = {
++      .type = KGSL_PROP_PWRCTRL,
++      .value = &enable,
++      .sizebytes = sizeof(enable),
++   };
++
++   if (safe_ioctl(fd, IOCTL_KGSL_SETPROPERTY, &prop))
++      mesa_logw("kgsl: failed to %s the GPU governor via KGSL_PROP_PWRCTRL: %s",
++                enable ? "re-enable" : "disable", strerror(errno));
++}
++
+ static int
+ kgsl_submitqueue_new(struct tu_device *dev, struct tu_queue *queue)
+ {
+@@ -62,6 +84,10 @@ kgsl_submitqueue_new(struct tu_device *dev, struct tu_queue *queue)
+ 
+    queue->msm_queue_id = req.drawctxt_id;
+ 
++   if (debug_get_option_kgsl_governor_off() &&
++       p_atomic_inc_return(&kgsl_governor_off_queues) == 1)
++      kgsl_set_governor(dev->physical_device->local_fd, 0);
++
+    return 0;
+ }
+ 
+@@ -73,6 +99,10 @@ kgsl_submitqueue_close(struct tu_device *dev, struct tu_queue *queue)
+    };
+ 
+    safe_ioctl(dev->physical_device->local_fd, IOCTL_KGSL_DRAWCTXT_DESTROY, &req);
++
++   if (debug_get_option_kgsl_governor_off() &&
++       p_atomic_dec_zero(&kgsl_governor_off_queues))
++      kgsl_set_governor(dev->physical_device->local_fd, 1);
+ }
+ 
+ static void kgsl_bo_finish(struct tu_device *dev, struct tu_bo *bo);

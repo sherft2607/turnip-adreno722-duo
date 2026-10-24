@@ -26,8 +26,8 @@ jobs:
         include:
           - id: standard
             label: Standard
-            patches: "a722_duo_v1_standard.patch 01-u_gralloc-always-use-ubwc-detection.patch 02-tu-default-prefer-sysmem.patch"
-            desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15."
+            patches: "a722_duo_v2_upstream_hbb15.patch tu-kgsl-governor-off-env.patch 01-u_gralloc-always-use-ubwc-detection.patch 02-tu-default-prefer-sysmem.patch"
+            desc: "Adreno 722: upstream device table with bank_bit=15, KGSL governor off (GPU at top clock)."
 
     env:
       VARIANT: ${{ matrix.id }}
