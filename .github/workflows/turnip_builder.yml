@@ -1,4 +1,4 @@
-name: Turnip Duo v4.4-exp (Duo Edition)
+name: Turnip Duo v5.0 (Final Golden Edition)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '4.4.3'
+        default: '5.0'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false
@@ -60,7 +60,7 @@ env:
   MESA_REPO: https://gitlab.freedesktop.org/mesa/mesa
   # Adrenotools package metadata and zip name for this fork.
   DRIVER_NAME: Turnip Duo
-  DRIVER_DESCRIPTION: 'Turnip for the Retroid Pocket Duo (Adreno 722), vauzi 4.4-exp patch set'
+  DRIVER_DESCRIPTION: 'Turnip for the Retroid Pocket Duo (Adreno 722), vauzi 4.4-exp minus Turnip-Z'
   DRIVER_AUTHOR: 'vauzi, Duo tuning by sherft2607'
   ZIP_PREFIX: Turnip-Duo
 

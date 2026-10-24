@@ -1,10 +1,25 @@
-# Turnip Duo v4.4.3 (Disable Subgroup Half-Warp for A722)
+# Turnip Duo v5.0 (Final Golden Edition: 60FPS + Clean Upstream UI)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
 
-4.4-exp is the fast, stable one: it stops at `50-fd720-blob.py` and does not
-carry the 60-series patches that came after it.
+v5.0 is vauzi's 4.4-exp patch set **minus the Turnip-Z hacks**. On pure
+upstream Mesa (MrPurple T30) the Mario Kart 8 HUD item icon renders correctly;
+with Turnip-Z it is blank. The frame rate comes from elsewhere in the stack, so
+dropping 30-37 keeps the speed and gets the UI back.
+
+**Off in v5.0** (renamed `.off`, all recoverable): `09` (subgroup half-warp),
+`30` (mutable UBWC), `31` (LRZ rescue), `32` (texfast), `33`/`37` (BGRA swap),
+`36` (sysmem-only + preamble rewrite).
+
+**Keeping the 60 FPS pipeline**: `01` (u_gralloc UBWC detection), `02` (LRZ
+reuse on DONT_CARE), `15` (IMapper5 gralloc), `16` (UBWC swapchains), `17`
+(KGSL governor lock + autotune bandwidth), `51` (FD722 calibration).
+
+`36` was what forced sysmem on every render pass, so `patches/default_env.conf`
+now sets `TU_DEBUG=sysmem`. Upstream's own `use_sysmem_rendering()` honours it,
+which keeps the sysmem pipeline — and patch 02, which only acts under
+`TU_DEBUG(SYSMEM)` — with no Turnip-Z code in the build.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
