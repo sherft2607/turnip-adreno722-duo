@@ -1,4 +1,4 @@
-# Turnip Duo v4.4.2 (Duo Edition)
+# Turnip Duo v4.4.2 (Fix 32KB Compute Shared Memory for A722)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
@@ -8,8 +8,14 @@ carry the 60-series patches that came after it.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
-* **v4.4.2**: patch 02 is back on. Disabling it in 4.4.1 cost frame rate and
-  did not fix the HUD item icon, so the icon is not an LRZ problem.
+* **v4.4.2**: patch 02 is back on (disabling it in 4.4.1 cost frame rate and
+  did not fix the HUD item icon), and `51-fd722-duo.py` now puts FD722's
+  `cs_shared_mem_size` back to 32 KiB. `18-wn-a8xx-shared-mem.py` raises it to
+  64 KiB on all 33 device entries; the Duo's SP has 32 KiB, which the OEM blob
+  confirms (`maxComputeSharedMemorySize = 32768`). The inflated limit let the
+  compute shader decoding the Mario Kart 8 HUD item texture overflow, so the
+  icon rendered blank while 3D geometry was fine. 51 runs after 18, so the
+  other 32 entries keep vauzi's 64 KiB.
 * **Runtime switches**: every Turnip-Z patch here is env-gated, so the
   remaining HUD bug can be bisected on a build you already have, with no
   rebuild: `TU_Z_MUTABLE` (0/1/2), `TU_Z_BGRA_SWAP`, `TU_Z_LRZ_RESCUE`,
@@ -19,8 +25,9 @@ carry the 60-series patches that came after it.
   into `patches/default_env.conf`, which `20-default-env.py` compiles in.
 * **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
   `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
-  is what gave 60 FPS docked. It asserts rather than edits, and fails the build
-  if upstream ever moves them.
+  is what gave 60 FPS docked — and rewrites `cs_shared_mem_size` to 32 KiB. It
+  asserts the first two rather than editing them, and fails the build if
+  upstream ever moves them.
 * Nothing in vauzi's set targets FD722: `40`–`46` are anchored to FD710, `50`
   to FD720, `14` to FD740 / X1-85. The Duo otherwise runs upstream config.
 

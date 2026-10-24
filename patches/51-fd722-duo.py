@@ -6,6 +6,16 @@ script changes nothing today - it locks them in:
 
   num_ccu          1    asserted
   tile_align_h    16    asserted
+  cs_shared_mem_size
+                   32 KiB  rewritten. 18-wn-a8xx-shared-mem.py raises this to
+                        64 KiB on every device entry, FD722 included, and it
+                        runs before this script. The Duo's SP has 32 KiB: the
+                        OEM blob reports maxComputeSharedMemorySize = 32768
+                        (stock vkjson), and the value is handed straight to
+                        that limit (tu_device.cc). Advertising 64 KiB let the
+                        compute shader decoding the Mario Kart 8 HUD item
+                        texture overflow it, so the icon came out blank while
+                        3D geometry rendered fine.
   highest_bank_bit 15   written out; it is A6xxGPUInfo's default today
                         (freedreno_dev_info.py), and 15 is the Duo's device-tree
                         value, read from
@@ -29,11 +39,13 @@ import re
 import sys
 
 NAME = "51-fd722-duo.py"
-SUMMARY = "FD722 num_ccu=1, tile_align_h=16, highest_bank_bit=15 (pinned)"
+SUMMARY = ("FD722 num_ccu=1, tile_align_h=16, highest_bank_bit=15 (pinned), "
+           "cs_shared_mem_size=32 KiB")
 
 DEVICES_PY = "src/freedreno/common/freedreno_devices.py"
 EXPECT = (1, 16)        # (num_ccu, tile_align_h)
 HBB = 15
+CS_SHARED_MEM_KIB = 32   # per the OEM blob; patch 18 would leave this at 64
 ENFORCE = True          # False = rewrite the block to EXPECT instead of failing
 
 
@@ -51,13 +63,14 @@ def main():
     block = m.group(0)
 
     got = {}
-    for key in ("num_ccu", "tile_align_h", "highest_bank_bit"):
+    for key in ("num_ccu", "tile_align_h", "highest_bank_bit", "cs_shared_mem_size"):
         k = re.search(rf"\b{key}\s*=\s*(\d+)", block)
         got[key] = int(k.group(1)) if k else None
     # highest_bank_bit absent means A6xxGPUInfo's default, which is 15 today.
     print(f"{NAME}: upstream FD722 num_ccu={got['num_ccu']} "
           f"tile_align_h={got['tile_align_h']} "
-          f"highest_bank_bit={got['highest_bank_bit'] if got['highest_bank_bit'] is not None else 'default'}")
+          f"highest_bank_bit={got['highest_bank_bit'] if got['highest_bank_bit'] is not None else 'default'} "
+          f"cs_shared_mem_size={got['cs_shared_mem_size']} * 1024")
 
     drift = (got["num_ccu"], got["tile_align_h"]) != EXPECT
     if drift and ENFORCE:
@@ -78,6 +91,11 @@ def main():
                           f"highest_bank_bit = {HBB},\n        raw_magic_regs =", 1)
     else:
         new = re.sub(r"\bhighest_bank_bit\s*=\s*\d+", f"highest_bank_bit = {HBB}", new)
+    if not re.search(r"\bcs_shared_mem_size\s*=\s*\d+\s*\*\s*1024", new):
+        print(f"{NAME}: ERROR cs_shared_mem_size not in the N * 1024 form", file=sys.stderr)
+        return 1
+    new = re.sub(r"\bcs_shared_mem_size\s*=\s*\d+\s*\*\s*1024",
+                 f"cs_shared_mem_size = {CS_SHARED_MEM_KIB} * 1024", new)
 
     if new == block:
         print(f"{NAME}: already applied")
