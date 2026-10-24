@@ -1,7 +1,7 @@
-name: Turnip Duo v3.1 (Vauzi Base + HBB15 + KGSL Governor Off)
+name: Turnip Duo v3.0 (Vauzi Base + HBB15, clean)
 
 # Manual only. Builds Mesa 74920caaa0 (the commit Vauzi-17 was built from) with NDK r29, API 36,
-# release buildtype, no LTO, u_gralloc UBWC patch, highest_bank_bit=15 and the KGSL governor-off patch.
+# release buildtype, no LTO, u_gralloc UBWC patch and highest_bank_bit=15 (no governor patch).
 on:
   workflow_dispatch:
 
@@ -28,8 +28,8 @@ jobs:
         include:
           - id: vauzi
             label: Vauzi Base
-            patches: "01-u_gralloc-always-use-ubwc-detection.patch a722_duo_hbb15.patch tu-kgsl-governor-off-env.patch"
-            desc: "Vauzi-17 base (Mesa 74920caaa0, NDK r29, API 36): A730 cache regs, highest_bank_bit=15, UBWC gralloc, KGSL governor off. No forced sysmem, no LOD bias."
+            patches: "01-u_gralloc-always-use-ubwc-detection.patch a722_duo_hbb15.patch"
+            desc: "Vauzi-17 base (Mesa 74920caaa0, NDK r29, API 36): A730 cache regs, highest_bank_bit=15, UBWC gralloc. No forced sysmem, no LOD bias."
 
     env:
       VARIANT: ${{ matrix.id }}
@@ -176,10 +176,10 @@ jobs:
           short = ".".join(ver.split(".")[:2])             # e.g. 27.0
           meta = {
               "schemaVersion": 1,
-              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v3.1 (%s)" % (short, os.environ["LABEL"]),
+              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v3.0 (%s)" % (short, os.environ["LABEL"]),
               "description": os.environ["DESC"],
               "author": "sherft2607",
-              "packageVersion": "3.1",
+              "packageVersion": "3.0",
               "vendor": "Mesa",
               "driverVersion": "Mesa " + ver,
               "minApi": 28,
@@ -192,7 +192,7 @@ jobs:
           python3 -c "import json; json.load(open('pkg/meta.json'))"
           cat pkg/meta.json
 
-          ZIPNAME="turnip-duo-v3.1-${VARIANT}.adpkg.zip"
+          ZIPNAME="turnip-duo-v3.0-${VARIANT}.adpkg.zip"
           (cd pkg && zip -9 -X "../out/$ZIPNAME" libvulkan_freedreno.so meta.json)
           unzip -l "out/$ZIPNAME"
           (cd out && sha256sum "$ZIPNAME" | tee "$ZIPNAME.sha256")
@@ -203,7 +203,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: turnip-duo-v3.1-${{ matrix.id }}
+          name: turnip-duo-v3.0-${{ matrix.id }}
           path: out/*
           if-no-files-found: error
           retention-days: 30
