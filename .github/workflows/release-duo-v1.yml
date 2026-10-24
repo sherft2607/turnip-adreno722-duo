@@ -1,7 +1,7 @@
-name: Turnip Duo v2.1 (Champion core)
+name: Turnip Duo v2.2 (A730 regs, API 35)
 
 # Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patches at -O3 (no LTO) and
-# packages turnip-duo-v2.1-champion.adpkg.zip (Adrenotools).
+# packages turnip-duo-v2.2-a730.adpkg.zip (Adrenotools).
 on:
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ env:
   MESA_SHA: ed2b00fa28dfc60061e21ecbe2280a49940fb470
   # r28c first, r27c as fallback (sdkmanager package versions).
   NDK_CANDIDATES: "28.2.13676358 27.2.12479018"
-  PLATFORM_SDK: "34"
+  PLATFORM_SDK: "35"
 
 jobs:
   release:
@@ -24,10 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: champion
-            label: Champion
-            patches: "a722_duo_v1_standard.patch 01-u_gralloc-always-use-ubwc-detection.patch tu-kgsl-governor-off-env.patch"
-            desc: "Adreno 722: 2 CCUs, 32-tile alignment, bank_bit=15, A720 magic regs, KGSL governor off, UBWC gralloc. GMEM/autotune untouched."
+          - id: a730
+            label: A730
+            patches: "a722_duo_v2_upstream_hbb15.patch 01-u_gralloc-always-use-ubwc-detection.patch tu-kgsl-governor-off-env.patch"
+            desc: "Adreno 722: upstream table (1 CCU, tile_align_h 16, A730 regs) + bank_bit=15, KGSL governor off, UBWC gralloc, API 35, beta extensions."
 
     env:
       VARIANT: ${{ matrix.id }}
@@ -150,6 +150,7 @@ jobs:
             -Degl=disabled \
             -Dgallium-drivers= \
             -Dvulkan-drivers=freedreno \
+            -Dvulkan-beta=true \
             -Dfreedreno-kmds=kgsl
           meson compile -C build-android-aarch64
 
@@ -173,10 +174,10 @@ jobs:
           short = ".".join(ver.split(".")[:2])             # e.g. 27.0
           meta = {
               "schemaVersion": 1,
-              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v2.1 (%s)" % (short, os.environ["LABEL"]),
+              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v2.2 (%s)" % (short, os.environ["LABEL"]),
               "description": os.environ["DESC"],
               "author": "sherft2607",
-              "packageVersion": "2.1",
+              "packageVersion": "2.2",
               "vendor": "Mesa",
               "driverVersion": "Mesa " + ver,
               "minApi": 28,
@@ -189,7 +190,7 @@ jobs:
           python3 -c "import json; json.load(open('pkg/meta.json'))"
           cat pkg/meta.json
 
-          ZIPNAME="turnip-duo-v2.1-${VARIANT}.adpkg.zip"
+          ZIPNAME="turnip-duo-v2.2-${VARIANT}.adpkg.zip"
           (cd pkg && zip -9 -X "../out/$ZIPNAME" libvulkan_freedreno.so meta.json)
           unzip -l "out/$ZIPNAME"
           (cd out && sha256sum "$ZIPNAME" | tee "$ZIPNAME.sha256")
@@ -200,7 +201,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: turnip-duo-v2.1-${{ matrix.id }}
+          name: turnip-duo-v2.2-${{ matrix.id }}
           path: out/*
           if-no-files-found: error
           retention-days: 30
