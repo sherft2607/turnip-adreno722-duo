@@ -1,0 +1,16 @@
+diff --git a/src/freedreno/common/freedreno_devices.py b/src/freedreno/common/freedreno_devices.py
+index 7ab1706f..8c57cee8 100644
+--- a/src/freedreno/common/freedreno_devices.py
++++ b/src/freedreno/common/freedreno_devices.py
+@@ -1115,9 +1115,9 @@ add_gpus([
+     ], A6xxGPUInfo(
+         CHIP.A7XX,
+         [a7xx_base, a7xx_gen1],
+-        num_ccu = 1,
++        num_ccu = 2,
+         tile_align_w = 64,
+-        tile_align_h = 16,
++        tile_align_h = 32,
+         tile_max_w = 1024,
+         tile_max_h = 1024,
+         num_vsc_pipes = 32,
