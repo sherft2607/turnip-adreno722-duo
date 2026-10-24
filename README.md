@@ -1,51 +1,20 @@
-# Turnip Duo v5.0 (Final Golden Edition: 60FPS + Clean Upstream UI)
+# Turnip Duo v5.1 (4.4-exp stack + A722 calibration)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
 
-v5.0 is vauzi's 4.4-exp patch set **minus the Turnip-Z hacks**. On pure
-upstream Mesa (MrPurple T30) the Mario Kart 8 HUD item icon renders correctly;
-with Turnip-Z it is blank. The frame rate comes from elsewhere in the stack, so
-dropping 30-37 keeps the speed and gets the UI back.
-
-**Off in v5.0** (renamed `.off`, all recoverable): `09` (subgroup half-warp),
-`30` (mutable UBWC), `31` (LRZ rescue), `32` (texfast), `33`/`37` (BGRA swap),
-`36` (sysmem-only + preamble rewrite).
-
-**Keeping the 60 FPS pipeline**: `01` (u_gralloc UBWC detection), `02` (LRZ
-reuse on DONT_CARE), `15` (IMapper5 gralloc), `16` (UBWC swapchains), `17`
-(KGSL governor lock + autotune bandwidth), `51` (FD722 calibration).
-
-`36` was what forced sysmem on every render pass, so `patches/default_env.conf`
-now sets `TU_DEBUG=sysmem`. Upstream's own `use_sysmem_rendering()` honours it,
-which keeps the sysmem pipeline — and patch 02, which only acts under
-`TU_DEBUG(SYSMEM)` — with no Turnip-Z code in the build.
+4.4-exp is the fast, stable one: it stops at `50-fd720-blob.py` and does not
+carry the 60-series patches that came after it.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
-* **v4.4.3**: `09-tu-ir3-subgroup-half-warp.patch` is renamed `.off`. Written
-  for A8XX, it applied everywhere: on FD722 `tu_min_subgroup_size()` returns
-  `threadsize_base / 2` because `a7xx_base` sets `has_getfiberid`, so Turnip
-  advertised `minSubgroupSize = 32` and lowered `WaveSize(32)` compute shaders
-  onto half-waves. The OEM blob reports `subgroupSize = 64` only. With it off,
-  FD722 advertises minSubgroupSize 64 / maxSubgroupSize 128 again, as upstream.
-  The 4.4.2 shared-memory fix did not bring the HUD item icon back, so this is
-  the next candidate.
-* **v4.4.2**: patch 02 is back on (disabling it in 4.4.1 cost frame rate and
-  did not fix the HUD item icon), and `51-fd722-duo.py` now puts FD722's
-  `cs_shared_mem_size` back to 32 KiB. `18-wn-a8xx-shared-mem.py` raises it to
-  64 KiB on all 33 device entries; the Duo's SP has 32 KiB, which the OEM blob
-  confirms (`maxComputeSharedMemorySize = 32768`). The inflated limit let the
-  compute shader decoding the Mario Kart 8 HUD item texture overflow, so the
-  icon rendered blank while 3D geometry was fine. 51 runs after 18, so the
-  other 32 entries keep vauzi's 64 KiB.
-* **Runtime switches**: every Turnip-Z patch here is env-gated, so the
-  remaining HUD bug can be bisected on a build you already have, with no
-  rebuild: `TU_Z_MUTABLE` (0/1/2), `TU_Z_BGRA_SWAP`, `TU_Z_LRZ_RESCUE`,
-  `TU_Z_SYSMEM_ONLY`, `TU_Z_TEXFAST`, `TU_LRZ_REUSE_DONT_CARE`. On Android
-  they also resolve as properties, e.g.
-  `adb shell setprop debug.mesa.tu.z.mutable 0`. Once a setting wins, bake it
-  into `patches/default_env.conf`, which `20-default-env.py` compiles in.
+* **v5.1**: the full 4.4-exp patch set, exactly as vauzi shipped it, with one
+  Duo-specific addition. The 4.4.1-5.0 experiments are all reverted: patch 02
+  is on, patch 09 is on, the Turnip-Z set (30-37) is on, and
+  `default_env.conf` has no active entries. `TU_DEBUG=sysmem` is deliberately
+  **not** baked in - on this device it corrupts UBWC swapchain strides
+  (purple/black vertical lines, GPU hangs). Patch 36 forces sysmem through its
+  own path instead, which is what the known-good build used.
 * **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
   `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
   is what gave 60 FPS docked — and rewrites `cs_shared_mem_size` to 32 KiB. It
