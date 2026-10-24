@@ -1,0 +1,214 @@
+name: Turnip Duo v1.0 (Performance Edition)
+
+# Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patch(es), ThinLTO and -O3,
+# and packages two Adrenotools packages:
+#   turnip-duo-v1.0-standard.adpkg.zip  (2 CCU, tile_align_h 32, hbb 15)
+#   turnip-duo-v1.0-biggmem.adpkg.zip   (same + BIG_GMEM autotune default)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MESA_URL: https://gitlab.freedesktop.org/mesa/mesa.git
+  MESA_SHA: ed2b00fa28dfc60061e21ecbe2280a49940fb470
+  # r28c first, r27c as fallback (sdkmanager package versions).
+  NDK_CANDIDATES: "28.2.13676358 27.2.12479018"
+  PLATFORM_SDK: "34"
+
+jobs:
+  release:
+    name: ${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: standard
+            label: Standard
+            patches: "a722_duo_v1_standard.patch"
+            desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15, ThinLTO."
+          - id: biggmem
+            label: Big-GMEM
+            patches: "a722_duo_v1_standard.patch a722_duo_v1_biggmem.patch"
+            desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15, ThinLTO, Big-GMEM autotune."
+
+    env:
+      VARIANT: ${{ matrix.id }}
+      LABEL: ${{ matrix.label }}
+      PATCHES: ${{ matrix.patches }}
+      DESC: ${{ matrix.desc }}
+
+    steps:
+      - name: Checkout this repository (patches)
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Install host packages
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3-pip python3-venv git zip unzip file bison flex glslang-tools pkg-config
+          python3 -m venv "$HOME/venv"
+          "$HOME/venv/bin/pip" install --quiet "meson>=1.4,<2" ninja mako pyyaml packaging
+          echo "$HOME/venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKM="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKM" || { echo "sdkmanager not found at $SDKM"; exit 1; }
+          (yes || true) | "$SDKM" --licenses > /dev/null || true
+          NDK_VER=""
+          for v in $NDK_CANDIDATES; do
+            if "$SDKM" --install "ndk;$v" > /dev/null; then NDK_VER="$v"; break; fi
+            echo "NDK $v unavailable, trying next"
+          done
+          test -n "$NDK_VER" || { echo "no NDK candidate could be installed"; exit 1; }
+          NDK="$SDK_ROOT/ndk/$NDK_VER"
+          grep -E "Pkg.Revision" "$NDK/source.properties"
+          BIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          for t in "aarch64-linux-android${PLATFORM_SDK}-clang" "aarch64-linux-android${PLATFORM_SDK}-clang++" llvm-ar llvm-strip; do
+            test -x "$BIN/$t" || { echo "missing NDK tool: $t"; exit 1; }
+          done
+          echo "NDK_BIN=$BIN" >> "$GITHUB_ENV"
+
+      - name: Fetch Mesa at the pinned tip commit
+        shell: bash
+        run: |
+          set -x
+          git init -q mesa
+          cd mesa
+          git remote add origin "$MESA_URL"
+          ok=0
+          for i in 1 2 3; do
+            if git fetch --depth 1 origin "$MESA_SHA"; then ok=1; break; fi
+            sleep $((i * 10))
+          done
+          if [ "$ok" != 1 ]; then
+            echo "single-SHA fetch refused; falling back to --shallow-since"
+            for i in 1 2 3; do
+              if git fetch --shallow-since=2026-10-01 origin main; then ok=1; break; fi
+              sleep $((i * 10))
+            done
+          fi
+          test "$ok" = 1
+          git checkout -q --detach "$MESA_SHA"
+          test "$(git rev-parse HEAD)" = "$MESA_SHA"
+          git log -1 --format='%H %cd %s'
+          echo "Mesa VERSION: $(cat VERSION)"
+
+      - name: Apply patches
+        shell: bash
+        working-directory: mesa
+        run: |
+          for p in $PATCHES; do
+            src="$GITHUB_WORKSPACE/repo/patches/$p"
+            test -f "$src" || { echo "missing patch: $src"; exit 1; }
+            # Windows checkouts may have turned the patch into CRLF.
+            sed 's/\r$//' "$src" > "$RUNNER_TEMP/$p"
+            git apply --check "$RUNNER_TEMP/$p"
+            git apply "$RUNNER_TEMP/$p"
+            echo "applied $p"
+          done
+          git diff --stat
+
+      - name: Write Meson cross file
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/android-aarch64" <<EOF
+          [constants]
+          bin = '$NDK_BIN'
+
+          [binaries]
+          ar = bin / 'llvm-ar'
+          c = [bin / 'aarch64-linux-android${PLATFORM_SDK}-clang']
+          cpp = [bin / 'aarch64-linux-android${PLATFORM_SDK}-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '--start-no-unused-arguments', '-static-libstdc++', '--end-no-unused-arguments']
+          c_ld = 'lld'
+          cpp_ld = 'lld'
+          strip = bin / 'llvm-strip'
+
+          [host_machine]
+          system = 'android'
+          cpu_family = 'aarch64'
+          cpu = 'armv8'
+          endian = 'little'
+          EOF
+          cat "$RUNNER_TEMP/android-aarch64"
+
+      - name: Configure and build Turnip (KGSL, ThinLTO, -O3)
+        shell: bash
+        working-directory: mesa
+        run: |
+          meson setup build-android-aarch64 \
+            --cross-file "$RUNNER_TEMP/android-aarch64" \
+            -Dbuildtype=release \
+            -Db_lto=true \
+            -Db_lto_mode=thin \
+            -Doptimization=3 \
+            -Dplatforms=android \
+            -Dplatform-sdk-version="$PLATFORM_SDK" \
+            -Dandroid-stub=true \
+            -Dandroid-libbacktrace=disabled \
+            -Degl=disabled \
+            -Dgallium-drivers= \
+            -Dvulkan-drivers=freedreno \
+            -Dfreedreno-kmds=kgsl
+          meson compile -C build-android-aarch64
+
+      - name: Strip, rename and package
+        shell: bash
+        run: |
+          set -e
+          LIB="$(find mesa/build-android-aarch64 -name libvulkan_freedreno.so | head -n 1)"
+          test -n "$LIB" || { echo "libvulkan_freedreno.so not found"; exit 1; }
+          rm -rf pkg out && mkdir pkg out
+          cp "$LIB" pkg/vulkan.adreno.so
+          "$NDK_BIN/llvm-strip" --strip-unneeded pkg/vulkan.adreno.so
+          file pkg/vulkan.adreno.so
+          file pkg/vulkan.adreno.so | grep -q "ARM aarch64"
+          ls -l pkg/vulkan.adreno.so
+
+          export MESA_VERSION="$(cat mesa/VERSION)"
+          python3 - <<'PY'
+          import json, os
+          ver = os.environ["MESA_VERSION"]                 # e.g. 27.0.0-devel
+          short = ".".join(ver.split(".")[:2])             # e.g. 27.0
+          meta = {
+              "schemaVersion": 1,
+              "name": "Turnip (Mesa %s) - Retroid Pocket Duo A722 v1.0 (%s)" % (short, os.environ["LABEL"]),
+              "description": os.environ["DESC"],
+              "author": "sherft2607",
+              "packageVersion": "1.0",
+              "vendor": "Mesa",
+              "driverVersion": "Mesa " + ver,
+              "minApi": 28,
+              "libraryName": "vulkan.adreno.so",
+          }
+          with open("pkg/meta.json", "w") as f:
+              json.dump(meta, f, indent=2)
+              f.write("\n")
+          PY
+          python3 -c "import json; json.load(open('pkg/meta.json'))"
+          cat pkg/meta.json
+
+          ZIPNAME="turnip-duo-v1.0-${VARIANT}.adpkg.zip"
+          (cd pkg && zip -9 -X "../out/$ZIPNAME" vulkan.adreno.so meta.json)
+          unzip -l "out/$ZIPNAME"
+          (cd out && sha256sum "$ZIPNAME" | tee "$ZIPNAME.sha256")
+
+          # Informational only: which loader entry points does this build export?
+          "$NDK_BIN/llvm-nm" -D --defined-only pkg/vulkan.adreno.so | grep -E "HMI|vk_icd|vkGetInstanceProcAddr" || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turnip-duo-v1.0-${{ matrix.id }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30
