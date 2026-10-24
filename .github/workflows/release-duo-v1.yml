@@ -13,7 +13,9 @@ env:
   MESA_SHA: 74920caaa0bed55313e7af00036c61515621913b
   # r29 first (Vauzi-17 build id 14206865), r28c as fallback (sdkmanager package versions).
   NDK_CANDIDATES: "29.0.14206865 29.0.14033849 28.2.13676358"
+  # Mesa platform-sdk-version (Vauzi: platform_sdkver 36) vs. NDK compiler wrapper API (Vauzi: sdkver 34).
   PLATFORM_SDK: "36"
+  CC_API: "34"
 
 jobs:
   release:
@@ -67,7 +69,7 @@ jobs:
           NDK="$SDK_ROOT/ndk/$NDK_VER"
           grep -E "Pkg.Revision" "$NDK/source.properties"
           BIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          for t in "aarch64-linux-android${PLATFORM_SDK}-clang" "aarch64-linux-android${PLATFORM_SDK}-clang++" llvm-ar llvm-strip; do
+          for t in "aarch64-linux-android${CC_API}-clang" "aarch64-linux-android${CC_API}-clang++" llvm-ar llvm-strip; do
             test -x "$BIN/$t" || { echo "missing NDK tool: $t"; exit 1; }
           done
           echo "NDK_BIN=$BIN" >> "$GITHUB_ENV"
@@ -121,8 +123,8 @@ jobs:
 
           [binaries]
           ar = bin / 'llvm-ar'
-          c = [bin / 'aarch64-linux-android${PLATFORM_SDK}-clang']
-          cpp = [bin / 'aarch64-linux-android${PLATFORM_SDK}-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '--start-no-unused-arguments', '-static-libstdc++', '--end-no-unused-arguments']
+          c = [bin / 'aarch64-linux-android${CC_API}-clang']
+          cpp = [bin / 'aarch64-linux-android${CC_API}-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '--start-no-unused-arguments', '-static-libstdc++', '--end-no-unused-arguments']
           c_ld = 'lld'
           cpp_ld = 'lld'
           strip = bin / 'llvm-strip'
