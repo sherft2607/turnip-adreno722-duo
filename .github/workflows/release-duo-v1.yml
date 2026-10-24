@@ -1,9 +1,7 @@
 name: Turnip Duo v1.0 (Performance Edition)
 
-# Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patch(es) at -O3,
-# and packages two Adrenotools packages (same source and patch, only the build recipe differs):
-#   turnip-duo-v1.0-standard.adpkg.zip  (2 CCU, tile_align_h 32, hbb 15; no LTO)
-#   turnip-duo-v1.0-lto.adpkg.zip       (same + ThinLTO via -Dallow-broken-lto; experimental)
+# Manual only. Builds Mesa tip ed2b00fa with the Duo A722 patches at -O3 (no LTO) and
+# packages turnip-duo-v1.0-standard.adpkg.zip (Adrenotools).
 on:
   workflow_dispatch:
 
@@ -28,21 +26,13 @@ jobs:
         include:
           - id: standard
             label: Standard
-            patches: "a722_duo_v1_standard.patch 01-u_gralloc-always-use-ubwc-detection.patch"
-            meson_extra: ""
+            patches: "a722_duo_v1_standard.patch 01-u_gralloc-always-use-ubwc-detection.patch 02-cemu-sysmem-drirc.patch"
             desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15."
-          - id: lto
-            label: ThinLTO
-            patches: "a722_duo_v1_standard.patch"
-            # Mesa rejects LTO unless allow-broken-lto is set (meson.build:44-54); experimental.
-            meson_extra: "-Dallow-broken-lto=true -Db_lto=true -Db_lto_mode=thin"
-            desc: "Adreno 722 optimized: 2 CCUs, 32-tile alignment, bank_bit=15, ThinLTO (experimental)."
 
     env:
       VARIANT: ${{ matrix.id }}
       LABEL: ${{ matrix.label }}
       PATCHES: ${{ matrix.patches }}
-      MESON_EXTRA: ${{ matrix.meson_extra }}
       DESC: ${{ matrix.desc }}
 
     steps:
@@ -153,7 +143,6 @@ jobs:
             --cross-file "$RUNNER_TEMP/android-aarch64" \
             -Dbuildtype=release \
             -Doptimization=3 \
-            $MESON_EXTRA \
             -Dplatforms=android \
             -Dplatform-sdk-version="$PLATFORM_SDK" \
             -Dandroid-stub=true \
@@ -207,12 +196,6 @@ jobs:
 
           # Informational only: which loader entry points does this build export?
           "$NDK_BIN/llvm-nm" -D --defined-only pkg/vulkan.adreno.so | grep -E "HMI|vk_icd|vkGetInstanceProcAddr" || true
-
-          # The Android loader needs the HMI hw-module symbol (vk_android.c, vulkan-android.sym).
-          # LTO could drop it, so fail the LTO job outright if it is missing.
-          if [ "$VARIANT" = lto ]; then
-            "$NDK_BIN/llvm-nm" -D --defined-only pkg/vulkan.adreno.so | grep -qw HMI || { echo "HMI not exported by the LTO build"; exit 1; }
-          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

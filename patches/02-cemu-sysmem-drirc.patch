@@ -1,0 +1,16 @@
+diff --git a/src/freedreno/vulkan/00-turnip-defaults.conf b/src/freedreno/vulkan/00-turnip-defaults.conf
+index da85f99..f46d276 100644
+--- a/src/freedreno/vulkan/00-turnip-defaults.conf
++++ b/src/freedreno/vulkan/00-turnip-defaults.conf
+@@ -156,5 +156,11 @@
+         <application name="Sweet Surrender" application_name_match="Sweet Surrender VR.exe">
+             <option name="tu_autotune_algorithm" value="prefer_gmem" />
+         </application>
++        <application name="Cemu" application_name_match="[Cc]emu">
++            <!-- Cemu (Wii U) on Adreno 722: system-memory rendering was measured faster than GMEM
++                 (Wind Waker HD, 20 -> 30 FPS). Note the autotuner already renders passes with
++                 fewer than 5 draws in sysmem, so this mainly changes the larger scene passes. -->
++            <option name="tu_autotune_algorithm" value="prefer_sysmem" />
++        </application>
+     </device>
+ </driconf>
