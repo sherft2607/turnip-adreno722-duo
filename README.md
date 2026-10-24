@@ -1,3 +1,34 @@
+# Turnip Duo v4.4-exp (Duo Edition)
+
+vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
+(Qualcomm Dragonwing Q-7790, Adreno 722)**.
+
+4.4-exp is the fast, stable one: it stops at `50-fd720-blob.py` and does not
+carry the 60-series patches that came after it.
+
+* **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
+* **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
+* **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
+  `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
+  is what gave 60 FPS docked. It asserts rather than edits, and fails the build
+  if upstream ever moves them.
+* Nothing in vauzi's set targets FD722: `40`–`46` are anchored to FD710, `50`
+  to FD720, `14` to FD740 / X1-85. The Duo otherwise runs upstream config.
+
+## Building
+
+Actions → **Turnip Duo v4.4-exp (Duo Edition)** → Run workflow. The defaults
+are the pinned Mesa commit and version `4.4-exp`; output is
+`Turnip-Duo-v4.4-exp.zip` (AdrenoTools).
+
+Recommended at runtime: `TU_DEBUG=sysmem`.
+
+The older hand-rolled workflows (`build-turnip.yml`, `release-duo-v1.yml`,
+`bisect-builds.yml`) and their patches in `legacy-patches/` are untouched and
+still work; vauzi's builder only reads `patches/`.
+
+---
+
 # Turnip for Retroid Pocket Duo (Adreno 722 / Q-7790)
 
 Custom Mesa Turnip Vulkan graphic drivers optimized for the **Qualcomm Dragonwing Q-7790 (Adreno 722)** in the Retroid Pocket Duo.
