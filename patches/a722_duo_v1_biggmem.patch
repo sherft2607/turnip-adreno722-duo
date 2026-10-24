@@ -1,0 +1,14 @@
+diff --git a/src/freedreno/vulkan/tu_autotune.cc b/src/freedreno/vulkan/tu_autotune.cc
+index c7551c1..cca900b 100644
+--- a/src/freedreno/vulkan/tu_autotune.cc
++++ b/src/freedreno/vulkan/tu_autotune.cc
+@@ -303,7 +303,8 @@ tu_autotune::get_env_config()
+ 
+       /* Parse the flags from the environment variable. */
+       const char *flags_env_str = os_get_option("TU_AUTOTUNE_FLAGS");
+-      uint32_t mod_flags = 0;
++      /* Duo build: default to BIG_GMEM; TU_AUTOTUNE_FLAGS, when set, replaces it. */
++      uint32_t mod_flags = static_cast<uint32_t>(mod_flag::BIG_GMEM);
+       if (flags_env_str) {
+          static const struct debug_control tu_at_flags_control[] = {
+             { "big_gmem", static_cast<uint32_t>(mod_flag::BIG_GMEM) },
