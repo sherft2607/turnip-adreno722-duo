@@ -1,4 +1,4 @@
-# Turnip Duo v4.4-exp (Duo Edition)
+# Turnip Duo v4.4.1 (Fix Item Icon Culling)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
@@ -8,6 +8,11 @@ carry the 60-series patches that came after it.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
+* **v4.4.1**: `02-tu-lrz-reuse-dont-care-in-sysmem.patch` is renamed `.off`.
+  It reused LRZ state across `LOAD_OP_DONT_CARE` depth passes under
+  `TU_DEBUG=sysmem`, which early-culled the Mario Kart 8 item icon. The patch
+  also has a runtime switch, `TU_LRZ_REUSE_DONT_CARE=0`, if you want to A/B it
+  on an existing build without rebuilding.
 * **Duo-specific**: `patches/51-fd722-duo.py` pins FD722 to `num_ccu = 1`,
   `tile_align_h = 16`, `highest_bank_bit = 15` — upstream's own values, which
   is what gave 60 FPS docked. It asserts rather than edits, and fails the build
