@@ -1,4 +1,4 @@
-# Turnip Duo v4.4.2 (Fix 32KB Compute Shared Memory for A722)
+# Turnip Duo v4.4.3 (Disable Subgroup Half-Warp for A722)
 
 vauzi's Turnip 4.4-exp patch set, pinned and built for the **Retroid Pocket Duo
 (Qualcomm Dragonwing Q-7790, Adreno 722)**.
@@ -8,6 +8,14 @@ carry the 60-series patches that came after it.
 
 * **Mesa**: pinned to `74920caaa0bed55313e7af00036c61515621913b` (Mesa 27.0.0-devel, 2026-10-17).
 * **Patches**: `patches/` is vauzi's tree at [`93ec337`](https://github.com/Vauzi-17/710/commit/93ec337) on the `sw` branch — the newest commit whose patch set matches the 4.4-exp release notes exactly.
+* **v4.4.3**: `09-tu-ir3-subgroup-half-warp.patch` is renamed `.off`. Written
+  for A8XX, it applied everywhere: on FD722 `tu_min_subgroup_size()` returns
+  `threadsize_base / 2` because `a7xx_base` sets `has_getfiberid`, so Turnip
+  advertised `minSubgroupSize = 32` and lowered `WaveSize(32)` compute shaders
+  onto half-waves. The OEM blob reports `subgroupSize = 64` only. With it off,
+  FD722 advertises minSubgroupSize 64 / maxSubgroupSize 128 again, as upstream.
+  The 4.4.2 shared-memory fix did not bring the HUD item icon back, so this is
+  the next candidate.
 * **v4.4.2**: patch 02 is back on (disabling it in 4.4.1 cost frame rate and
   did not fix the HUD item icon), and `51-fd722-duo.py` now puts FD722's
   `cs_shared_mem_size` back to 32 KiB. `18-wn-a8xx-shared-mem.py` raises it to

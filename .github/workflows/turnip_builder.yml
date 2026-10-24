@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '4.4.2'
+        default: '4.4.3'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false
