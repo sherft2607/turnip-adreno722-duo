@@ -1,4 +1,4 @@
-name: Turnip Duo v5.5 (Sysmem base + upstream mutable-format images)
+name: Turnip Duo v5.6 (Upstream image handling on the sysmem base)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '5.5'
+        default: '5.6'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false
