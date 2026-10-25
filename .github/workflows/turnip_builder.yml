@@ -1,4 +1,4 @@
-name: Turnip Duo v5.4 (Autotune + T30 GMEM settings)
+name: Turnip Duo v5.5 (Sysmem base + upstream mutable-format images)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '5.4'
+        default: '5.5'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false

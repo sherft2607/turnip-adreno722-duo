@@ -4,8 +4,8 @@
 The Duo's 60 FPS docked result comes from upstream's own FD722 values, so this
 script changes nothing today - it locks them in:
 
-  num_ccu          2    rewritten (T30 value)
-  tile_align_h    32    rewritten (T30 value)
+  num_ccu          1    rewritten (device value; T30's 2/32 only suits GMEM)
+  tile_align_h    16    rewritten
   cs_shared_mem_size
                    32 KiB  rewritten. 18-wn-a8xx-shared-mem.py raises this to
                         64 KiB on every device entry, FD722 included, and it
@@ -53,10 +53,10 @@ DEVICES_PY = "src/freedreno/common/freedreno_devices.py"
 # in GMEM; our 1/16/15 set was only ever validated in a forced-sysmem build,
 # where they are close to inert. With Turnip-Z off, autotune turns GMEM on and
 # 1/16/15 produced UBWC corruption (purple/black lines) and a GPU hang.
-EXPECT = (2, 32)        # (num_ccu, tile_align_h)
-HBB = 16
+EXPECT = (1, 16)        # (num_ccu, tile_align_h)
+HBB = 15
 CS_SHARED_MEM_KIB = 32   # OEM blob limit; matches plain Mesa, which T30 is
-ENFORCE = False         # rewrite 56's block to EXPECT instead of failing
+ENFORCE = False         # 56 writes the block first, so rewrite rather than assert
 
 SUMMARY = (f"FD722 num_ccu={EXPECT[0]}, tile_align_h={EXPECT[1]}, "
            f"highest_bank_bit={HBB}, cs_shared_mem_size={CS_SHARED_MEM_KIB} KiB")
