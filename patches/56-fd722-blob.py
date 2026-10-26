@@ -29,7 +29,7 @@ SUMMARY = "FD722: a722_raw_magic_regs (TPL1 0x03000000/0x700, SP chicken 0x400/0
 
 DEVICES = "src/freedreno/common/freedreno_devices.py"
 
-MAGIC_BLOCK = """a722_raw_magic_regs = [
+MAGIC_BLOCK_OCT = """a722_raw_magic_regs = [
         [A6XXRegs.REG_A6XX_UCHE_CACHE_WAYS, 0x00040004],
         [A6XXRegs.REG_A6XX_TPL1_DBG_ECO_CNTL, 0x03000000],
         [A6XXRegs.REG_A6XX_TPL1_DBG_ECO_CNTL1, 0x00000700],
@@ -79,7 +79,11 @@ MAGIC_BLOCK = """a722_raw_magic_regs = [
 
 """
 
-NEW_A722_BLOCK = """add_gpus([
+MAGIC_BLOCK_AUG = MAGIC_BLOCK_OCT.replace(
+    "        [A6XXRegs.REG_A6XX_RB_DBG_ECO_CNTL,   0x00000000],\n", ""
+)
+
+NEW_A722_BLOCK_OCT = """add_gpus([
         GPUId(chip_id=0x43020100, name="Adreno (TM) 722"),
         GPUId(chip_id=0xffff43020100, name="Adreno (TM) 722"),
     ], A6xxGPUInfo(
@@ -97,6 +101,11 @@ NEW_A722_BLOCK = """add_gpus([
         highest_bank_bit = 15,
         raw_magic_regs = a722_raw_magic_regs,
     ))"""
+
+NEW_A722_BLOCK_AUG = NEW_A722_BLOCK_OCT.replace(
+    "        raw_magic_regs = a722_raw_magic_regs,\n",
+    "        magic_regs = a730_magic_regs,\n        raw_magic_regs = a722_raw_magic_regs,\n",
+)
 
 
 def apply_devices(s):
@@ -119,7 +128,11 @@ def apply_devices(s):
         return None, "Could not delineate Adreno 722 add_gpus block in freedreno_devices.py"
     end += 6  # include '    ))'
 
-    replacement = MAGIC_BLOCK + NEW_A722_BLOCK
+    uses_magic_regs_dict = "magic_regs = a730_magic_regs," in s[start:end]
+    if uses_magic_regs_dict:
+        replacement = MAGIC_BLOCK_AUG + NEW_A722_BLOCK_AUG
+    else:
+        replacement = MAGIC_BLOCK_OCT + NEW_A722_BLOCK_OCT
     s = s[:start] + replacement + s[end:]
     return s, None
 
