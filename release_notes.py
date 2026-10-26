@@ -232,7 +232,7 @@ def main():
     add = lines.append
 
     add("> Experimental build based on Mesa (main branch).")
-    add("> Not officially supported — do **not** report issues to Mesa upstream.")
+    add("> Not officially supported - do **not** report issues to Mesa upstream.")
     add("")
     add("## Support")
     add("- Need help? https://t.me/vauzi_17")
@@ -278,7 +278,7 @@ def main():
         add("None in the standard build.")
     for name in base:
         desc = patch_description(PATCH_DIR / name)
-        add(f"- `{name}`" + (f" — {desc}" if desc else ""))
+        add(f"- `{name}`" + (f" - {desc}" if desc else ""))
     for variant, extra in extras.items():
         if not extra:
             continue
@@ -286,13 +286,13 @@ def main():
         add(f"Only in the `{variant}` variant:")
         for name in extra:
             desc = patch_description(PATCH_DIR / name)
-            add(f"- `{Path(name).name}`" + (f" — {desc}" if desc else ""))
+            add(f"- `{Path(name).name}`" + (f" - {desc}" if desc else ""))
     if glibc_only:
         add("")
         add("Only in the glibc build:")
         for name in glibc_only:
             desc = patch_description(PATCH_DIR / name)
-            add(f"- `{Path(name).name}`" + (f" — {desc}" if desc else ""))
+            add(f"- `{Path(name).name}`" + (f" - {desc}" if desc else ""))
     if base or any(extras.values()) or glibc_only:
         add("")
 
@@ -350,7 +350,7 @@ def main():
             desc = f"glibc (Winlator), {desc}"
         else:
             desc = f"Android (AdrenoTools), {desc}"
-        add(f"- `{f.name}` — {desc}")
+        add(f"- `{f.name}` - {desc}")
     add("")
     add("<details>")
     add("<summary>SHA-256</summary>")

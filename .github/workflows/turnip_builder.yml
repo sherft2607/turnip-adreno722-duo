@@ -1,4 +1,4 @@
-name: Turnip Duo v5.7 (Stable base restored)
+name: Turnip Duo v6.0 (Safe Mutable + QCOM_COMPRESSED Guard)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '5.7'
+        default: '6.0'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false
