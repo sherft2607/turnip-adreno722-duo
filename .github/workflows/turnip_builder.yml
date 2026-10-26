@@ -1,4 +1,4 @@
-name: Turnip Duo v6.0 (Safe Mutable + QCOM_COMPRESSED Guard)
+name: Turnip Duo v7.0 (Clean Upstream From-Scratch Build)
 
 on:
   # Manual only. This fork is pinned to one Mesa commit, so there is
@@ -9,7 +9,7 @@ on:
         description: 'Release version. This fork has no N.N tags to count from, so keep it set.'
         required: false
         type: string
-        default: '6.0'
+        default: '7.0'
       changes:
         description: 'Changes for the release notes, separated by ";" (optional)'
         required: false
@@ -60,7 +60,7 @@ env:
   MESA_REPO: https://gitlab.freedesktop.org/mesa/mesa
   # Adrenotools package metadata and zip name for this fork.
   DRIVER_NAME: Turnip Duo
-  DRIVER_DESCRIPTION: 'Turnip for the Retroid Pocket Duo (Adreno 722), vauzi 4.4-exp patch set'
+  DRIVER_DESCRIPTION: 'Turnip for the Retroid Pocket Duo (Adreno 722), clean upstream from-scratch build'
   DRIVER_AUTHOR: 'vauzi, Duo tuning by sherft2607'
   ZIP_PREFIX: Turnip-Duo
 
